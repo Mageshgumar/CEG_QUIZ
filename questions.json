@@ -1,0 +1,62 @@
+[
+  {
+    "question": "What is the capital of France?",
+    "options": ["Berlin", "Madrid", "Paris", "Rome"],
+    "correct_option": 2,
+    "difficulty": "easy"
+  },
+  {
+    "question": "Which planet is known as the Red Planet?",
+    "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+    "correct_option": 1,
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is the chemical symbol for water?",
+    "options": ["CO2", "H2O", "O2", "NaCl"],
+    "correct_option": 1,
+    "difficulty": "easy"
+  },
+  {
+    "question": "Who wrote the play 'Romeo and Juliet'?",
+    "options": ["Charles Dickens", "William Shakespeare", "Mark Twain", "Jane Austen"],
+    "correct_option": 1,
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is the largest ocean on Earth?",
+    "options": ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"],
+    "correct_option": 3,
+    "difficulty": "medium"
+  },
+  {
+    "question": "In which year did World War II end?",
+    "options": ["1943", "1944", "1945", "1946"],
+    "correct_option": 2,
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is the powerhouse of the cell?",
+    "options": ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"],
+    "correct_option": 2,
+    "difficulty": "medium"
+  },
+  {
+    "question": "Which gas do plants absorb from the atmosphere?",
+    "options": ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"],
+    "correct_option": 2,
+    "difficulty": "medium"
+  },
+  {
+    "question": "What is the value of Pi (π) to two decimal places?",
+    "options": ["3.12", "3.14", "3.16", "3.18"],
+    "correct_option": 1,
+    "difficulty": "hard"
+  },
+  {
+    "question": "Which element has the atomic number 79?",
+    "options": ["Silver", "Gold", "Platinum", "Copper"],
+    "correct_option": 1,
+    "difficulty": "hard"
+  }
+]

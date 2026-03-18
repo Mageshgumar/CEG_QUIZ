@@ -1,0 +1,83 @@
+{
+  "7854911734": {
+    "name": "Sri Bavan Akash S",
+    "phone": "9500284495",
+    "roll": "2023103627",
+    "parent_username": "@rking2004",
+    "score": 8,
+    "total_questions": 10,
+    "current_question": 10,
+    "answers": [
+      {
+        "question": "What is the capital of France?",
+        "user_answer": "A. Berlin",
+        "correct_answer": "C. Paris",
+        "is_correct": false
+      },
+      {
+        "question": "Which planet is known as the Red Planet?",
+        "user_answer": "B. Mars",
+        "correct_answer": "B. Mars",
+        "is_correct": true
+      },
+      {
+        "question": "What is the chemical symbol for water?",
+        "user_answer": "B. H2O",
+        "correct_answer": "B. H2O",
+        "is_correct": true
+      },
+      {
+        "question": "Who wrote the play 'Romeo and Juliet'?",
+        "user_answer": "A. Charles Dickens",
+        "correct_answer": "B. William Shakespeare",
+        "is_correct": false
+      },
+      {
+        "question": "What is the largest ocean on Earth?",
+        "user_answer": "D. Pacific Ocean",
+        "correct_answer": "D. Pacific Ocean",
+        "is_correct": true
+      },
+      {
+        "question": "In which year did World War II end?",
+        "user_answer": "C. 1945",
+        "correct_answer": "C. 1945",
+        "is_correct": true
+      },
+      {
+        "question": "What is the powerhouse of the cell?",
+        "user_answer": "C. Mitochondria",
+        "correct_answer": "C. Mitochondria",
+        "is_correct": true
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "user_answer": "C. Carbon Dioxide",
+        "correct_answer": "C. Carbon Dioxide",
+        "is_correct": true
+      },
+      {
+        "question": "What is the value of Pi (\u03c0) to two decimal places?",
+        "user_answer": "B. 3.14",
+        "correct_answer": "B. 3.14",
+        "is_correct": true
+      },
+      {
+        "question": "Which element has the atomic number 79?",
+        "user_answer": "B. Gold",
+        "correct_answer": "B. Gold",
+        "is_correct": true
+      }
+    ]
+  },
+  "1160461046": {
+    "name": "Sundar",
+    "phone": "",
+    "roll": "",
+    "parent_username": "",
+    "score": 0,
+    "total_questions": 0,
+    "current_question": 0,
+    "answers": []
+  }
+}
