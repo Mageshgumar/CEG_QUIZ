@@ -1,1 +1,4 @@
 python-telegram-bot==20.7
+SpeechRecognition==3.10.4
+imageio-ffmpeg==0.6.0
+Flask==3.0.3

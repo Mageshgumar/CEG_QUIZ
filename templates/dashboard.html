@@ -1,0 +1,86 @@
+{% extends 'base.html' %} {% block content %}
+<section class="card">
+  <h2>Current Tests</h2>
+  <form class="inline" method="post" action="{{ url_for('set_all_inactive') }}">
+    <button type="submit" class="secondary-button">
+      Set All Tests Inactive
+    </button>
+  </form>
+  {% if tests %}
+  <table>
+    <thead>
+      <tr>
+        <th>Test Name</th>
+        <th>Questions</th>
+        <th>Timer</th>
+        <th>Random Count</th>
+        <th>One Time</th>
+        <th>Attempts</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for test in tests %}
+      <tr>
+        <td>{{ test.name }}</td>
+        <td>{{ test.questions|length }}</td>
+        <td>{{ test.timer_seconds }} sec</td>
+        <td>
+          {% if test.random_count and test.random_count > 0 %}{{
+          test.random_count }}{% else %}All{% endif %}
+        </td>
+        <td>{% if test.one_time %}Yes{% else %}No{% endif %}</td>
+        <td>{{ attendance_by_test.get(test.id, 0) }}</td>
+        <td>
+          {% if test.is_active %}<strong>Active</strong>{% else %}Inactive{%
+          endif %}
+        </td>
+        <td>
+          <a
+            class="button-link"
+            href="{{ url_for('test_details', test_id=test.id) }}"
+            >View Students</a
+          >
+          {% if not test.is_active %}
+          <form
+            class="inline"
+            method="post"
+            action="{{ url_for('set_active', test_id=test.id) }}"
+          >
+            <button type="submit">Set Active</button>
+          </form>
+          {% else %}
+          <form
+            class="inline"
+            method="post"
+            action="{{ url_for('set_inactive', test_id=test.id) }}"
+          >
+            <button type="submit" class="secondary-button">Set Inactive</button>
+          </form>
+          {% endif %}
+          <a
+            class="button-link secondary-button"
+            href="{{ url_for('edit_test', test_id=test.id) }}"
+            >Edit</a
+          >
+          <form
+            class="inline"
+            method="post"
+            action="{{ url_for('remove_test', test_id=test.id) }}"
+            onsubmit="
+              return confirm('Delete this test? Ongoing sessions will reset.');
+            "
+          >
+            <button type="submit" class="danger-button">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No tests found. Create your first test.</p>
+  {% endif %}
+</section>
+{% endblock %}

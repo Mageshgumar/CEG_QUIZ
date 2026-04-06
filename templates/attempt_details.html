@@ -1,0 +1,32 @@
+{% extends 'base.html' %} {% block content %}
+<section class="card">
+  <h2>{{ attempt.test_name }} - {{ attempt.student.name }}</h2>
+  <p>
+    Roll: {{ attempt.student.roll }} | Score: {{ attempt.score }}/{{
+    attempt.total_questions }} ({{ '%.0f'|format(percentage) }}%)
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Question No</th>
+        <th>Question</th>
+        <th>Student Answer</th>
+        <th>Correct Answer</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ans in attempt.answers %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ ans.question }}</td>
+        <td>{{ ans.user_answer }}</td>
+        <td>{{ ans.correct_answer }}</td>
+        <td>{% if ans.is_correct %}Correct{% else %}Wrong{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

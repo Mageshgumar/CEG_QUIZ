@@ -1,0 +1,47 @@
+{% extends 'base.html' %} {% block content %}
+<section class="card">
+  <h2>Create Test</h2>
+  <form method="post" enctype="multipart/form-data" class="form-grid">
+    <label>Test Name</label>
+    <input type="text" name="test_name" required />
+
+    <label>Upload Test File (.txt)</label>
+    <input type="file" name="test_file" accept=".txt" required />
+
+    <label>Timer per question (seconds)</label>
+    <input type="number" min="5" name="timer_seconds" value="30" required />
+
+    <label>Random question count (0 = all)</label>
+    <input type="number" min="0" name="random_count" value="0" required />
+
+    <label class="checkbox"
+      ><input type="checkbox" name="one_time" /> One Time test (each roll number
+      can attend only once)</label
+    >
+
+    <label class="checkbox"
+      ><input type="checkbox" name="make_active" /> Make this test active
+      immediately</label
+    >
+
+    <button type="submit">Create Test</button>
+  </form>
+
+  <h3>Text file format</h3>
+  <pre>
+Q: What is 2 + 2?
+A) 1
+B) 2
+C) 3
+D) 4
+ANS: D
+---
+Q: Capital of France?
+A) Berlin
+B) Madrid
+C) Paris
+D) Rome
+ANS: C</pre
+  >
+</section>
+{% endblock %}

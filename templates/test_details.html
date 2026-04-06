@@ -1,0 +1,89 @@
+{% extends 'base.html' %} {% block content %}
+<section class="card">
+  <h2>{{ test.name }} - Students Attended</h2>
+  <p>
+    Questions: {{ test.questions|length }} | Timer: {{ test.timer_seconds }} sec
+    | Random: {{ test.random_count or 'All' }}
+  </p>
+
+  <form method="get" class="form-grid" style="margin-bottom: 14px">
+    <label>Search by Name or Roll</label>
+    <input
+      type="text"
+      name="q"
+      value="{{ search_query or '' }}"
+      placeholder="e.g. Jdnx or 1234567890"
+    />
+
+    <label>Sort By</label>
+    <select name="sort_by">
+      <option value="submitted_at" {{ selected_sort_submitted }}>
+        Latest Submission
+      </option>
+      <option value="name" {{ selected_sort_name }}>Name</option>
+      <option value="roll" {{ selected_sort_roll }}>Roll Number</option>
+      <option value="score" {{ selected_sort_score }}>Score</option>
+    </select>
+
+    <label>Order</label>
+    <select name="order">
+      <option value="asc" {{ selected_order_asc }}>Ascending</option>
+      <option value="desc" {{ selected_order_desc }}>Descending</option>
+    </select>
+
+    <div>
+      <button type="submit">Apply</button>
+      <a
+        class="button-link secondary-button"
+        href="{{ url_for('test_details', test_id=test.id) }}"
+        >Reset</a
+      >
+    </div>
+  </form>
+
+  {% if attempts %}
+  <table>
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Roll</th>
+        <th>Score</th>
+        <th>Submitted At</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for attempt in attempts %}
+      <tr>
+        <td>{{ attempt.student.name }}</td>
+        <td>{{ attempt.student.roll }}</td>
+        <td>{{ attempt.score }}/{{ attempt.total_questions }}</td>
+        <td>{{ attempt.submitted_at }}</td>
+        <td>
+          <a
+            class="button-link"
+            href="{{ url_for('attempt_details', attempt_id=attempt.attempt_id) }}"
+            >View Result</a
+          >
+          <form
+            class="inline"
+            method="post"
+            action="{{ url_for('delete_attempt', attempt_id=attempt.attempt_id) }}"
+            onsubmit="
+              return confirm(
+                'Delete this student attempt? This cannot be undone.',
+              );
+            "
+          >
+            <button type="submit" class="danger-button">Delete Attempt</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No students have completed this test yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

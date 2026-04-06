@@ -5,7 +5,7 @@ User data management — registration storage, input validation, and persistence
 import json
 import os
 import re
-from config import RESULTS_FILE
+from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE
 
 
 # ──────────────────────────────────────────────
@@ -13,8 +13,13 @@ from config import RESULTS_FILE
 # ──────────────────────────────────────────────
 
 def validate_phone(phone: str) -> bool:
-    """Return True if *phone* is all digits and 7-15 characters long."""
-    return bool(re.fullmatch(r"\d{7,15}", phone.strip()))
+    """Return True if *phone* is exactly 10 digits."""
+    return bool(re.fullmatch(r"\d{10}", phone.strip()))
+
+
+def validate_roll(roll: str) -> bool:
+    """Return True if *roll* is exactly 10 digits."""
+    return bool(re.fullmatch(r"\d{10}", roll.strip()))
 
 
 def validate_parent_username(username: str) -> bool:
@@ -35,6 +40,7 @@ class UserDataManager:
         self._users: dict[int, dict] = {}
         # parent_username → chat_id (populated when a parent /starts the bot)
         self._parent_chat_ids: dict[str, int] = {}
+        self._load_parent_chat_ids()
 
     # ── user CRUD ────────────────────────────
 
@@ -83,9 +89,90 @@ class UserDataManager:
     def register_parent(self, username: str, chat_id: int) -> None:
         """Map a parent's @username to their chat_id."""
         self._parent_chat_ids[username.lower()] = chat_id
+        self._save_parent_chat_ids()
 
     def get_parent_chat_id(self, username: str) -> int | None:
         return self._parent_chat_ids.get(username.lower())
+
+    def _save_parent_chat_ids(self) -> None:
+        """Persist parent @username → chat_id mapping to disk."""
+        with open(PARENTS_FILE, "w") as fp:
+            json.dump(self._parent_chat_ids, fp, indent=2)
+
+    def _load_parent_chat_ids(self) -> None:
+        """Load parent mapping from disk if it exists."""
+        if not os.path.exists(PARENTS_FILE):
+            return
+
+        try:
+            with open(PARENTS_FILE) as fp:
+                data = json.load(fp)
+            if isinstance(data, dict):
+                # Normalize keys and ensure chat IDs are integers.
+                self._parent_chat_ids = {
+                    str(username).lower(): int(chat_id)
+                    for username, chat_id in data.items()
+                }
+        except (json.JSONDecodeError, ValueError, TypeError):
+            self._parent_chat_ids = {}
+
+    def save_attempt(self, attempt: dict) -> None:
+        """Append a completed test attempt to persistent storage."""
+        attempts = self.load_attempts()
+        attempts.append(attempt)
+        with open(ATTEMPTS_FILE, "w") as fp:
+            json.dump(attempts, fp, indent=2)
+
+    def load_attempts(self) -> list[dict]:
+        """Load historical attempts for teacher dashboard."""
+        if os.path.exists(ATTEMPTS_FILE):
+            try:
+                with open(ATTEMPTS_FILE) as fp:
+                    data = json.load(fp)
+                if isinstance(data, list):
+                    return data
+            except json.JSONDecodeError:
+                return []
+        return []
+
+    def has_attempt_for_roll(self, test_id: str, roll: str) -> bool:
+        """Return True if the given roll has already submitted this test."""
+        normalized_roll = str(roll).strip()
+        for attempt in self.load_attempts():
+            if str(attempt.get("test_id", "")) != str(test_id):
+                continue
+            student_roll = str((attempt.get("student") or {}).get("roll", "")).strip()
+            if student_roll == normalized_roll:
+                return True
+        return False
+
+    def delete_attempt_by_id(self, attempt_id: str) -> tuple[bool, dict | None]:
+        """Delete an attempt by ID and return (deleted, removed_attempt)."""
+        attempts = self.load_attempts()
+        kept = []
+        removed = None
+
+        for attempt in attempts:
+            if str(attempt.get("attempt_id", "")) == str(attempt_id) and removed is None:
+                removed = attempt
+                continue
+            kept.append(attempt)
+
+        if removed is None:
+            return False, None
+
+        with open(ATTEMPTS_FILE, "w") as fp:
+            json.dump(kept, fp, indent=2)
+        return True, removed
+
+    def roll_exists_in_attempts(self, roll: str) -> bool:
+        """Return True if the roll has appeared in any historical attempt."""
+        normalized_roll = str(roll).strip()
+        for attempt in self.load_attempts():
+            student_roll = str((attempt.get("student") or {}).get("roll", "")).strip()
+            if student_roll == normalized_roll:
+                return True
+        return False
 
     # ── persistence ──────────────────────────
 
