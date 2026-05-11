@@ -9,7 +9,6 @@ users through registration then an inline-keyboard quiz.
 import logging
 import asyncio
 import difflib
-from datetime import datetime, timezone
 import hashlib
 import os
 import random
@@ -17,6 +16,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -60,6 +61,72 @@ try:
     FFMPEG_EXE = get_ffmpeg_exe()
 except Exception:
     FFMPEG_EXE = "ffmpeg"
+
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
+
+# Outbound send queue and rate limiting (Telegram limits ~30 msg/sec overall, ~1 msg/sec per chat)
+SEND_QUEUE: asyncio.Queue = asyncio.Queue()
+SEND_WORKER_TASK: asyncio.Task | None = None
+GLOBAL_MIN_INTERVAL = 1.0 / 30.0
+PER_CHAT_INTERVAL = 1.0
+GLOBAL_LAST_SENT = 0.0
+CHAT_LAST_SENT: dict[int, float] = {}
+
+
+async def _rate_limit_send(chat_id: int | None) -> None:
+    global GLOBAL_LAST_SENT
+
+    now = time.monotonic()
+    wait_s = max(0.0, GLOBAL_MIN_INTERVAL - (now - GLOBAL_LAST_SENT))
+    if chat_id is not None:
+        last_chat = CHAT_LAST_SENT.get(chat_id, 0.0)
+        wait_s = max(wait_s, PER_CHAT_INTERVAL - (now - last_chat))
+
+    if wait_s > 0:
+        await asyncio.sleep(wait_s)
+
+    now = time.monotonic()
+    GLOBAL_LAST_SENT = now
+    if chat_id is not None:
+        CHAT_LAST_SENT[chat_id] = now
+
+
+async def _send_worker() -> None:
+    while True:
+        item = await SEND_QUEUE.get()
+        if item is None:
+            SEND_QUEUE.task_done()
+            break
+
+        call_name = item["call_name"]
+        operation = item["operation"]
+        chat_id = item.get("chat_id")
+        future = item["future"]
+
+        try:
+            await _rate_limit_send(chat_id)
+            result = await _retry_telegram_call(call_name, operation)
+            if not future.done():
+                future.set_result(result)
+        except Exception as exc:
+            if not future.done():
+                future.set_exception(exc)
+        finally:
+            SEND_QUEUE.task_done()
+
+
+async def _queue_telegram_call(call_name: str, operation, chat_id: int | None = None):
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+    await SEND_QUEUE.put(
+        {
+            "call_name": call_name,
+            "operation": operation,
+            "chat_id": chat_id,
+            "future": future,
+        }
+    )
+    return await future
 
 
 _LETTER_TO_INDEX = {"a": 0, "b": 1, "c": 2, "d": 3}
@@ -183,21 +250,31 @@ async def _retry_telegram_call(call_name: str, operation, retries: int = 2, base
 
 async def safe_reply(message, text: str, **kwargs):
     kwargs.setdefault("protect_content", True)
-    return await _retry_telegram_call("reply_text", lambda: message.reply_text(text, **kwargs))
+    chat_id = getattr(message, "chat_id", None)
+    return await _queue_telegram_call(
+        "reply_text",
+        lambda: message.reply_text(text, **kwargs),
+        chat_id=chat_id,
+    )
 
 
 async def safe_send(bot, chat_id: int, text: str, **kwargs):
     kwargs.setdefault("protect_content", True)
-    return await _retry_telegram_call(
+    return await _queue_telegram_call(
         "send_message",
         lambda: bot.send_message(chat_id=chat_id, text=text, **kwargs),
+        chat_id=chat_id,
     )
 
 
 async def safe_edit(query, text: str, **kwargs):
-    return await _retry_telegram_call(
+    chat_id = None
+    if getattr(query, "message", None) is not None:
+        chat_id = getattr(query.message, "chat_id", None)
+    return await _queue_telegram_call(
         "edit_message_text",
         lambda: query.edit_message_text(text=text, **kwargs),
+        chat_id=chat_id,
     )
 
 
@@ -251,6 +328,15 @@ async def _advance_on_timeout(context: ContextTypes.DEFAULT_TYPE,
         user_answer="No answer (Timed out)",
         correct_answer=f"{labels[question['correct_option']]}. {question['options'][question['correct_option']]}",
         is_correct=False,
+    )
+
+    mark_correct = user.get("mark_correct", 1)
+    mark_incorrect = user.get("mark_incorrect", 0)
+    user_manager.update_score(
+        chat_id,
+        False,
+        mark_correct=mark_correct,
+        mark_incorrect=mark_incorrect,
     )
 
     user["current_question"] += 1
@@ -326,12 +412,19 @@ def _initialize_user_test_session(user: dict, test: dict) -> None:
         selected_questions = question_pool
 
     timer_seconds = int(test.get("timer_seconds", 30) or 30)
+    mark_correct = int(test.get("mark_correct", 1) or 1)
+    mark_incorrect = int(test.get("mark_incorrect", 0) or 0)
+    total_marks = (len(selected_questions) * mark_correct) if mark_correct > 0 else 0
+    
     user["score"] = 0
     user["answers"] = []
     user["test_id"] = test.get("id", "default")
     user["test_name"] = test.get("name", "Untitled Test")
     user["test_version"] = int(test.get("version", 1))
     user["timer_seconds"] = timer_seconds
+    user["mark_correct"] = mark_correct
+    user["mark_incorrect"] = mark_incorrect
+    user["total_marks"] = total_marks
     user["question_set"] = selected_questions
     user["total_questions"] = len(selected_questions)
     user["current_question"] = 0
@@ -431,7 +524,7 @@ async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def phone_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Validate & store phone, ask for roll number."""
+    """Validate & store phone, ask for parent username."""
     chat_id = update.effective_chat.id
     phone = update.message.text.strip()
 
@@ -443,28 +536,6 @@ async def phone_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return PHONE
 
     user_manager.update_field(chat_id, "phone", phone)
-    await safe_reply(update.message, "🆔 Please enter your *roll number*:", parse_mode="Markdown")
-    return ROLL
-
-
-async def roll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Store roll number and ask for parent username."""
-    chat_id = update.effective_chat.id
-    roll = update.message.text.strip()
-
-    if not validate_roll(roll):
-        await safe_reply(update.message, "⚠️ Invalid roll number. Please enter exactly 10 digits:")
-        return ROLL
-
-    if user_manager.roll_exists_in_attempts(roll):
-        await safe_reply(
-            update.message,
-            "⚠️ This roll number has already been used in a previous test attempt. "
-            "Please contact your teacher if this is a mistake.",
-        )
-        return ROLL
-
-    user_manager.update_field(chat_id, "roll", roll)
     await safe_reply(
         update.message,
         "👨‍👩‍👦 Please enter your *parent's Telegram username*\n"
@@ -472,6 +543,62 @@ async def roll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         parse_mode="Markdown",
     )
     return PARENT
+
+
+async def roll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Validate roll after test selection, then start chosen test."""
+    chat_id = update.effective_chat.id
+    roll = update.message.text.strip()
+
+    if not validate_roll(roll):
+        await safe_reply(update.message, "⚠️ Invalid roll number. Please enter exactly 10 digits:")
+        return ROLL
+
+    user = user_manager.get_user(chat_id)
+    if user is None:
+        await safe_reply(update.message, "⚠️ Session expired. Please /start again.")
+        return ConversationHandler.END
+
+    pending_test_id = user.get("pending_test_id")
+    if not pending_test_id:
+        await safe_reply(update.message, "⚠️ Please choose a test first. Send /start to begin.")
+        return ConversationHandler.END
+
+    selected_test = get_test_by_id(pending_test_id)
+    if selected_test is None or not selected_test.get("is_active"):
+        await safe_reply(update.message, "🚫 Selected test is not active anymore. Please /start again.")
+        return ConversationHandler.END
+
+    if selected_test.get("one_time") and user_manager.has_attempt_for_roll(pending_test_id, roll):
+        active_tests = get_active_tests()
+        await safe_reply(
+            update.message,
+            "🚫 *One Time Test*\n"
+            "This roll number has already attended this test once.\n\n"
+            "Please choose another test:",
+            parse_mode="Markdown",
+            reply_markup=_build_test_select_markup(active_tests) if active_tests else None,
+        )
+        return TEST_SELECT
+
+    user_manager.update_field(chat_id, "roll", roll)
+    _initialize_user_test_session(user, selected_test)
+    user.pop("pending_test_id", None)
+
+    await safe_reply(
+        update.message,
+        "🎯 *Test Selected!*\n\n"
+        f"🧪 Test: *{user['test_name']}*\n"
+        f"⏱️ Timer per question: *{user['timer_seconds']} seconds*\n"
+        f"📚 Questions you'll get: *{user['total_questions']}*\n"
+        f"✅ Marks for correct: *{user['mark_correct']}*\n"
+        f"❌ Marks for wrong: *{user['mark_incorrect']}*\n"
+        "⏳ Timeouts will be considered as wrong answers.\n"
+        f"🆔 Roll: *{user['roll']}*\n\n"
+        "Get ready — first question is coming now!",
+        parse_mode="Markdown",
+    )
+    return await send_question(update, context, chat_id)
 
 
 async def parent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -499,9 +626,9 @@ async def parent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "✅ *Registration Complete!*\n\n"
         f"👤 Name: {user['name']}\n"
         f"📱 Phone: {user['phone']}\n"
-        f"🆔 Roll: {user['roll']}\n"
         f"👨‍👩‍👦 Parent: {user['parent_username']}\n\n"
-        "🧪 Please choose a test to attend:",
+        "🧪 Please choose a test to attend.\n"
+        "🆔 You will enter your roll number after selecting a test.",
         parse_mode="Markdown",
         reply_markup=_build_test_select_markup(active_tests),
     )
@@ -509,7 +636,7 @@ async def parent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def test_select_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle selected test after registration."""
+    """Handle selected test and then prompt for roll number."""
     query = update.callback_query
     await query.answer()
 
@@ -529,25 +656,20 @@ async def test_select_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await safe_edit(query, "⚠️ Selected test has no questions. Please contact your teacher.")
         return ConversationHandler.END
 
-    if selected_test.get("one_time") and user_manager.has_attempt_for_roll(test_id, user.get("roll", "")):
-        await safe_edit(
-            query,
-            "🚫 *One Time Test*\nThis roll number has already attended this test once.",
-            parse_mode="Markdown",
-        )
-        return ConversationHandler.END
-
-    _initialize_user_test_session(user, selected_test)
+    user["pending_test_id"] = test_id
     await safe_edit(
         query,
         "🎯 *Test Selected!*\n\n"
-        f"🧪 Test: *{user['test_name']}*\n"
-        f"⏱️ Timer per question: *{user['timer_seconds']} seconds*\n"
-        f"📚 Questions you'll get: *{user['total_questions']}*\n\n"
-        "Get ready — first question is coming now!",
+        f"🧪 Test: *{selected_test.get('name', 'Untitled Test')}*\n"
+        f"⏱️ Timer per question: *{int(selected_test.get('timer_seconds', 30) or 30)} seconds*\n"
+        f"📚 Questions you'll get: *{len(selected_test.get('questions', []))}*\n"
+        f"✅ Marks for correct: *{int(selected_test.get('mark_correct', 1) or 1)}*\n"
+        f"❌ Marks for wrong: *{int(selected_test.get('mark_incorrect', 0) or 0)}*\n\n"
+        "⏳ Timeouts will be considered as wrong answers.\n\n"
+        "🆔 Please enter your *roll number* to continue:",
         parse_mode="Markdown",
     )
-    return await send_question(update, context, chat_id)
+    return ROLL
 
 
 # ══════════════════════════════════════════════
@@ -852,7 +974,9 @@ async def _process_selected_answer(update: Update,
         return QUIZ
 
     is_correct = check_answer(question, selected_index)
-    user_manager.update_score(chat_id, is_correct)
+    mark_correct = user.get("mark_correct", 1)
+    mark_incorrect = user.get("mark_incorrect", 0)
+    user_manager.update_score(chat_id, is_correct, mark_correct=mark_correct, mark_incorrect=mark_incorrect)
     user_manager.record_answer(
         chat_id,
         question_text=question["question"],
@@ -1014,7 +1138,7 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
     user_manager.save_results()
     attempt = {
         "attempt_id": uuid4().hex,
-        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_at": datetime.now(IST_TZ).isoformat(),
         "test_id": user.get("test_id", "default"),
         "test_name": user.get("test_name", "Untitled Test"),
         "test_version": user.get("test_version", 1),
@@ -1027,6 +1151,7 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
         },
         "score": user.get("score", 0),
         "total_questions": user.get("total_questions", 0),
+        "total_marks": user.get("total_marks", user.get("total_questions", 0)),
         "answers": user.get("answers", []),
     }
     user_manager.save_attempt(attempt)
@@ -1101,9 +1226,23 @@ def main() -> None:
         print("❌  Please set your bot token in config.py first!")
         sys.exit(1)
 
+    async def _post_init(app: Application) -> None:
+        global SEND_WORKER_TASK
+        if SEND_WORKER_TASK is None:
+            SEND_WORKER_TASK = asyncio.create_task(_send_worker(), name="send_worker")
+
+    async def _post_shutdown(app: Application) -> None:
+        global SEND_WORKER_TASK
+        if SEND_WORKER_TASK is not None:
+            await SEND_QUEUE.put(None)
+            await SEND_WORKER_TASK
+            SEND_WORKER_TASK = None
+
     app = (
         Application.builder()
         .token(BOT_TOKEN)
+        .post_init(_post_init)
+        .post_shutdown(_post_shutdown)
         .defaults(Defaults(protect_content=True))
         .connect_timeout(30.0)
         .read_timeout(30.0)
@@ -1122,9 +1261,9 @@ def main() -> None:
         states={
             NAME:   [MessageHandler(filters.TEXT & ~filters.COMMAND, name_handler)],
             PHONE:  [MessageHandler(filters.TEXT & ~filters.COMMAND, phone_handler)],
-            ROLL:   [MessageHandler(filters.TEXT & ~filters.COMMAND, roll_handler)],
             PARENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, parent_handler)],
             TEST_SELECT: [CallbackQueryHandler(test_select_handler, pattern=r"^test_.+")],
+            ROLL:   [MessageHandler(filters.TEXT & ~filters.COMMAND, roll_handler)],
             QUIZ:   [
                 CallbackQueryHandler(quiz_callback_handler, pattern=r"^answer_\d+_\d+$"),
                 MessageHandler(filters.VOICE, quiz_voice_handler),

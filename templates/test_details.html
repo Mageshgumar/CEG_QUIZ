@@ -47,6 +47,7 @@
       <tr>
         <th>Student Name</th>
         <th>Roll</th>
+        <th>Phone</th>
         <th>Score</th>
         <th>Submitted At</th>
         <th>Action</th>
@@ -57,7 +58,8 @@
       <tr>
         <td>{{ attempt.student.name }}</td>
         <td>{{ attempt.student.roll }}</td>
-        <td>{{ attempt.score }}/{{ attempt.total_questions }}</td>
+        <td>{{ attempt.student.phone }}</td>
+        <td>{{ attempt.score }}/{{ attempt.total_marks or attempt.total_questions }}</td>
         <td>{{ attempt.submitted_at }}</td>
         <td>
           <a

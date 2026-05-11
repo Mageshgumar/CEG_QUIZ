@@ -18,7 +18,7 @@ def format_result_message(user_data: dict) -> str:
     Build a concise result message suitable for sending to a parent.
     """
     score = user_data["score"]
-    total = user_data["total_questions"]
+    total = user_data.get("total_marks", user_data["total_questions"])
     percentage = (score / total * 100) if total else 0
 
     text = (

@@ -3,7 +3,7 @@
   <h2>{{ attempt.test_name }} - {{ attempt.student.name }}</h2>
   <p>
     Roll: {{ attempt.student.roll }} | Score: {{ attempt.score }}/{{
-    attempt.total_questions }} ({{ '%.0f'|format(percentage) }}%)
+    attempt.total_marks or attempt.total_questions }} ({{ '%.0f'|format(percentage) }}%)
   </p>
 
   <table>

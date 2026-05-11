@@ -162,7 +162,7 @@ def attempt_details(attempt_id: str):
         flash("Student attempt not found.", "error")
         return redirect(url_for("dashboard"))
 
-    total = attempt.get("total_questions", 0)
+    total = attempt.get("total_marks", attempt.get("total_questions", 0))
     score = attempt.get("score", 0)
     percentage = (score / total * 100) if total else 0
 
@@ -208,6 +208,8 @@ def create_test():
         try:
             timer_seconds = int(request.form.get("timer_seconds", "30") or "30")
             random_count = int(request.form.get("random_count", "0") or "0")
+            mark_correct = int(request.form.get("mark_correct", "1") or "1")
+            mark_incorrect = int(request.form.get("mark_incorrect", "0") or "0")
             content = test_file.read().decode("utf-8")
             questions = parse_test_file(content)
             test = build_test(
@@ -216,6 +218,8 @@ def create_test():
                 timer_seconds=timer_seconds,
                 random_count=random_count,
                 one_time=one_time,
+                mark_correct=mark_correct,
+                mark_incorrect=mark_incorrect,
                 is_active=make_active,
             )
             add_test(test, make_active=make_active)
@@ -282,6 +286,8 @@ def edit_test(test_id: str):
         try:
             timer_seconds = int(request.form.get("timer_seconds", str(test.get("timer_seconds", 30))) or "30")
             random_count = int(request.form.get("random_count", str(test.get("random_count", 0))) or "0")
+            mark_correct = int(request.form.get("mark_correct", str(test.get("mark_correct", 1))) or "1")
+            mark_incorrect = int(request.form.get("mark_incorrect", str(test.get("mark_incorrect", 0))) or "0")
             content = test_file.read().decode("utf-8")
             questions = parse_test_file(content)
             updated = update_test(
@@ -291,13 +297,22 @@ def edit_test(test_id: str):
                 random_count=random_count,
                 questions=questions,
                 one_time=one_time,
+                mark_correct=mark_correct,
+                mark_incorrect=mark_incorrect,
                 make_active=make_active,
             )
             if not updated:
                 flash("Failed to update test.", "error")
                 return redirect(url_for("dashboard"))
 
-            flash("Test updated. Ongoing student sessions for this test will be reset.", "success")
+            removed_count = user_manager.delete_attempts_by_test_id(test_id)
+            if removed_count:
+                flash(
+                    f"Test updated. Cleared {removed_count} previous attempts for this test.",
+                    "success",
+                )
+            else:
+                flash("Test updated. Ongoing student sessions for this test will be reset.", "success")
             return redirect(url_for("dashboard"))
         except Exception as exc:
             flash(f"Failed to edit test: {exc}", "error")
@@ -316,4 +331,5 @@ def remove_test(test_id: str):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", "10000"))
+    app.run(host="0.0.0.0", port=port, debug=False)

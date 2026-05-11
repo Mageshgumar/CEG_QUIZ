@@ -31,6 +31,22 @@
       required
     />
 
+    <label>Mark for Correct Answer</label>
+    <input
+      type="number"
+      name="mark_correct"
+      value="{{ test.mark_correct or 1 }}"
+      required
+    />
+
+    <label>Mark for Incorrect Answer</label>
+    <input
+      type="number"
+      name="mark_incorrect"
+      value="{{ test.mark_incorrect or 0 }}"
+      required
+    />
+
     <label class="checkbox">
       <input
         type="checkbox"

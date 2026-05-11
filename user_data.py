@@ -66,11 +66,13 @@ class UserDataManager:
         if chat_id in self._users:
             self._users[chat_id][field] = value
 
-    def update_score(self, chat_id: int, is_correct: bool) -> None:
-        """Increment score if the answer was correct."""
+    def update_score(self, chat_id: int, is_correct: bool, mark_correct: int = 1, mark_incorrect: int = 0) -> None:
+        """Update score based on answer correctness and mark values."""
         if chat_id in self._users:
             if is_correct:
-                self._users[chat_id]["score"] += 1
+                self._users[chat_id]["score"] += mark_correct
+            else:
+                self._users[chat_id]["score"] += mark_incorrect
 
     def record_answer(self, chat_id: int, question_text: str,
                       user_answer: str, correct_answer: str,
@@ -164,6 +166,23 @@ class UserDataManager:
         with open(ATTEMPTS_FILE, "w") as fp:
             json.dump(kept, fp, indent=2)
         return True, removed
+
+    def delete_attempts_by_test_id(self, test_id: str) -> int:
+        """Delete all attempts for a test ID. Returns number removed."""
+        attempts = self.load_attempts()
+        kept = []
+        removed_count = 0
+
+        for attempt in attempts:
+            if str(attempt.get("test_id", "")) == str(test_id):
+                removed_count += 1
+                continue
+            kept.append(attempt)
+
+        if removed_count:
+            with open(ATTEMPTS_FILE, "w") as fp:
+                json.dump(kept, fp, indent=2)
+        return removed_count
 
     def roll_exists_in_attempts(self, roll: str) -> bool:
         """Return True if the roll has appeared in any historical attempt."""

@@ -15,6 +15,8 @@
         <th>Timer</th>
         <th>Random Count</th>
         <th>One Time</th>
+        <th>Marks (Correct)</th>
+        <th>Marks (Wrong)</th>
         <th>Attempts</th>
         <th>Status</th>
         <th>Actions</th>
@@ -31,6 +33,8 @@
           test.random_count }}{% else %}All{% endif %}
         </td>
         <td>{% if test.one_time %}Yes{% else %}No{% endif %}</td>
+        <td>{{ test.mark_correct or 1 }}</td>
+        <td>{{ test.mark_incorrect or 0 }}</td>
         <td>{{ attendance_by_test.get(test.id, 0) }}</td>
         <td>
           {% if test.is_active %}<strong>Active</strong>{% else %}Inactive{%

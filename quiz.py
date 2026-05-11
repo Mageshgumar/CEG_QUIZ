@@ -2,12 +2,14 @@
 Quiz logic — question loading, formatting, answer checking, and result summary.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import QUESTIONS_FILE, TESTS_FILE
+
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
 # ──────────────────────────────────────────────
 # Question loading
@@ -34,8 +36,8 @@ def _ensure_test_file() -> None:
         "is_active": True,
         "version": 1,
         "questions": default_questions,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(IST_TZ).isoformat(),
+        "updated_at": datetime.now(IST_TZ).isoformat(),
     }
 
     with open(TESTS_FILE, "w") as fp:
@@ -53,6 +55,21 @@ def load_tests() -> list[dict]:
     for test in tests:
         if "one_time" not in test:
             test["one_time"] = False
+            normalized = True
+        if "mark_correct" not in test:
+            test["mark_correct"] = 1
+            normalized = True
+        if "mark_incorrect" not in test:
+            test["mark_incorrect"] = 0
+            normalized = True
+
+        question_count = len(test.get("questions") or [])
+        random_count = int(test.get("random_count", 0) or 0)
+        if question_count and random_count > question_count:
+            test["random_count"] = question_count
+            normalized = True
+        elif not question_count and random_count:
+            test["random_count"] = 0
             normalized = True
 
     if normalized:
@@ -132,11 +149,13 @@ def update_test(test_id: str,
                 random_count: int,
                 questions: list[dict],
                 one_time: bool,
+                mark_correct: int = 1,
+                mark_incorrect: int = 0,
                 make_active: bool = False) -> bool:
     """Replace test content and metadata, incrementing version for session invalidation."""
     tests = load_tests()
     found = False
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(IST_TZ).isoformat()
 
     for test in tests:
         if test.get("id") != test_id:
@@ -147,6 +166,8 @@ def update_test(test_id: str,
         test["timer_seconds"] = max(5, int(timer_seconds))
         test["random_count"] = max(0, min(int(random_count), len(questions)))
         test["one_time"] = bool(one_time)
+        test["mark_correct"] = int(mark_correct)
+        test["mark_incorrect"] = int(mark_incorrect)
         test["questions"] = questions
         test["version"] = int(test.get("version", 1)) + 1
         test["updated_at"] = now
@@ -236,7 +257,7 @@ def add_test(test: dict, make_active: bool = False) -> None:
     if make_active:
         test["is_active"] = True
     test.setdefault("version", 1)
-    test.setdefault("updated_at", datetime.utcnow().isoformat())
+    test.setdefault("updated_at", datetime.now(IST_TZ).isoformat())
     tests.append(test)
     save_tests(tests)
 
@@ -246,12 +267,14 @@ def build_test(name: str,
                timer_seconds: int,
                random_count: int,
                one_time: bool,
+               mark_correct: int = 1,
+               mark_incorrect: int = 0,
                is_active: bool = False) -> dict:
     """Create a normalized test document."""
     safe_name = name.strip() or "Untitled Test"
-    hash_src = f"{safe_name}:{datetime.utcnow().isoformat()}"
+    hash_src = f"{safe_name}:{datetime.now(IST_TZ).isoformat()}"
     test_id = hashlib.sha1(hash_src.encode("utf-8")).hexdigest()[:12]
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(IST_TZ).isoformat()
 
     return {
         "id": test_id,
@@ -259,6 +282,8 @@ def build_test(name: str,
         "timer_seconds": max(5, int(timer_seconds)),
         "random_count": max(0, min(int(random_count), len(questions))),
         "one_time": bool(one_time),
+        "mark_correct": int(mark_correct),
+        "mark_incorrect": int(mark_incorrect),
         "is_active": bool(is_active),
         "version": 1,
         "questions": questions,
@@ -320,7 +345,8 @@ def get_result_summary(user_data: dict) -> str:
     """Build a formatted result summary string."""
     labels = ["A", "B", "C", "D"]
     score = user_data["score"]
-    total = user_data["total_questions"]
+    # Use total_marks if available (new system), otherwise fall back to total_questions (legacy)
+    total = user_data.get("total_marks", user_data["total_questions"])
     percentage = (score / total * 100) if total else 0
 
     lines = [

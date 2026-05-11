@@ -2,10 +2,16 @@
 Configuration constants for the Telegram Quiz Bot.
 """
 
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # ──────────────────────────────────────────────
-# Bot Token — replace with your own from @BotFather
+# Bot Token — set BOT_TOKEN in your environment
 # ──────────────────────────────────────────────
-BOT_TOKEN = "7607288915:AAGa3tkdqkqo83cip-uvaYiveAFaLvFrbQc"
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # ──────────────────────────────────────────────
 # ConversationHandler state constants
