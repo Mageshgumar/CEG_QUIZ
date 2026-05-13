@@ -4,11 +4,12 @@
 from functools import wraps
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 
 from config import TEACHER_USERNAME, TEACHER_PASSWORD
 from quiz import (
     load_tests,
+    save_tests,
     add_test,
     parse_test_file,
     set_active_test,
@@ -23,6 +24,7 @@ from user_data import UserDataManager
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("DASHBOARD_SECRET", "cegquiz_dashboard_secret")
+API_KEY = os.environ.get("API_KEY", "")
 
 user_manager = UserDataManager()
 
@@ -37,9 +39,83 @@ def login_required(view_func):
     return wrapper
 
 
+def _api_key_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if not API_KEY:
+            return jsonify({"error": "API key not configured"}), 403
+        header_key = request.headers.get("X-API-Key", "")
+        if header_key != API_KEY:
+            return jsonify({"error": "Unauthorized"}), 403
+        return view_func(*args, **kwargs)
+
+    return wrapper
+
+
 def _attempts_for_test(test_id: str):
     attempts = user_manager.load_attempts()
     return [a for a in attempts if a.get("test_id") == test_id]
+
+
+@app.route("/api/tests", methods=["GET", "POST"])
+@_api_key_required
+def api_tests():
+    if request.method == "GET":
+        return jsonify(load_tests())
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, list):
+        return jsonify({"error": "Expected list of tests"}), 400
+    save_tests(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/attempts", methods=["GET", "POST"])
+@_api_key_required
+def api_attempts():
+    if request.method == "GET":
+        return jsonify(user_manager.load_attempts())
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected attempt object"}), 400
+    user_manager.save_attempt(data)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/attempts/<attempt_id>", methods=["DELETE"])
+@_api_key_required
+def api_attempts_delete(attempt_id: str):
+    deleted, removed = user_manager.delete_attempt_by_id(attempt_id)
+    return jsonify({"deleted": deleted, "removed": removed})
+
+
+@app.route("/api/attempts/by-test/<test_id>", methods=["DELETE"])
+@_api_key_required
+def api_attempts_delete_by_test(test_id: str):
+    removed_count = user_manager.delete_attempts_by_test_id(test_id)
+    return jsonify({"removed_count": removed_count})
+
+
+@app.route("/api/parents/<username>", methods=["GET"])
+@_api_key_required
+def api_parent_get(username: str):
+    chat_id = user_manager.get_parent_chat_id(username)
+    return jsonify({"chat_id": chat_id})
+
+
+@app.route("/api/parents", methods=["POST"])
+@_api_key_required
+def api_parent_set():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected parent payload"}), 400
+    username = str(data.get("username", "")).strip()
+    chat_id = data.get("chat_id")
+    if not username or chat_id is None:
+        return jsonify({"error": "username and chat_id required"}), 400
+    user_manager.register_parent(username, int(chat_id))
+    return jsonify({"ok": True})
 
 
 @app.route("/")

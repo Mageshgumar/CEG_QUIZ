@@ -13,6 +13,10 @@ load_dotenv()
 # ──────────────────────────────────────────────
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
+# Shared API (optional). If set, bot reads/writes via dashboard API.
+API_BASE_URL = os.environ.get("API_BASE_URL", "")
+API_KEY = os.environ.get("API_KEY", "")
+
 # ──────────────────────────────────────────────
 # ConversationHandler state constants
 # ──────────────────────────────────────────────

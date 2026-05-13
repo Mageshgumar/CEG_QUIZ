@@ -6,10 +6,40 @@ from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
+import requests
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import QUESTIONS_FILE, TESTS_FILE
+from config import QUESTIONS_FILE, TESTS_FILE, API_BASE_URL, API_KEY
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
+def _api_enabled() -> bool:
+    return bool(API_BASE_URL)
+
+
+def _api_headers() -> dict:
+    return {"X-API-Key": API_KEY} if API_KEY else {}
+
+
+def _api_url(path: str) -> str:
+    return f"{API_BASE_URL.rstrip('/')}{path}"
+
+
+def _api_request(method: str, path: str, payload=None):
+    if not _api_enabled():
+        return None
+    resp = requests.request(
+        method,
+        _api_url(path),
+        json=payload,
+        headers=_api_headers(),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    if resp.content:
+        return resp.json()
+    return None
 
 # ──────────────────────────────────────────────
 # Question loading
@@ -46,6 +76,10 @@ def _ensure_test_file() -> None:
 
 def load_tests() -> list[dict]:
     """Load all tests from persistent storage."""
+    if _api_enabled():
+        data = _api_request("GET", "/api/tests")
+        return data if isinstance(data, list) else []
+
     _ensure_test_file()
     with open(TESTS_FILE) as fp:
         tests = json.load(fp)
@@ -80,6 +114,10 @@ def load_tests() -> list[dict]:
 
 def save_tests(tests: list[dict]) -> None:
     """Save all tests to persistent storage."""
+    if _api_enabled():
+        _api_request("POST", "/api/tests", payload=tests)
+        return
+
     with open(TESTS_FILE, "w") as fp:
         json.dump(tests, fp, indent=2)
 

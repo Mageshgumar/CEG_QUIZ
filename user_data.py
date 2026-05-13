@@ -5,7 +5,11 @@ User data management — registration storage, input validation, and persistence
 import json
 import os
 import re
-from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE
+from urllib.parse import quote
+
+import requests
+
+from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY
 
 
 # ──────────────────────────────────────────────
@@ -90,19 +94,35 @@ class UserDataManager:
 
     def register_parent(self, username: str, chat_id: int) -> None:
         """Map a parent's @username to their chat_id."""
+        if self._api_enabled():
+            self._api_request(
+                "POST",
+                "/api/parents",
+                payload={"username": username, "chat_id": chat_id},
+            )
+            return
         self._parent_chat_ids[username.lower()] = chat_id
         self._save_parent_chat_ids()
 
     def get_parent_chat_id(self, username: str) -> int | None:
+        if self._api_enabled():
+            data = self._api_request("GET", f"/api/parents/{quote(username)}")
+            if isinstance(data, dict):
+                return data.get("chat_id")
+            return None
         return self._parent_chat_ids.get(username.lower())
 
     def _save_parent_chat_ids(self) -> None:
         """Persist parent @username → chat_id mapping to disk."""
+        if self._api_enabled():
+            return
         with open(PARENTS_FILE, "w") as fp:
             json.dump(self._parent_chat_ids, fp, indent=2)
 
     def _load_parent_chat_ids(self) -> None:
         """Load parent mapping from disk if it exists."""
+        if self._api_enabled():
+            return
         if not os.path.exists(PARENTS_FILE):
             return
 
@@ -120,6 +140,9 @@ class UserDataManager:
 
     def save_attempt(self, attempt: dict) -> None:
         """Append a completed test attempt to persistent storage."""
+        if self._api_enabled():
+            self._api_request("POST", "/api/attempts", payload=attempt)
+            return
         attempts = self.load_attempts()
         attempts.append(attempt)
         with open(ATTEMPTS_FILE, "w") as fp:
@@ -127,6 +150,9 @@ class UserDataManager:
 
     def load_attempts(self) -> list[dict]:
         """Load historical attempts for teacher dashboard."""
+        if self._api_enabled():
+            data = self._api_request("GET", "/api/attempts")
+            return data if isinstance(data, list) else []
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
@@ -150,6 +176,11 @@ class UserDataManager:
 
     def delete_attempt_by_id(self, attempt_id: str) -> tuple[bool, dict | None]:
         """Delete an attempt by ID and return (deleted, removed_attempt)."""
+        if self._api_enabled():
+            data = self._api_request("DELETE", f"/api/attempts/{attempt_id}")
+            if isinstance(data, dict):
+                return bool(data.get("deleted")), data.get("removed")
+            return False, None
         attempts = self.load_attempts()
         kept = []
         removed = None
@@ -169,6 +200,11 @@ class UserDataManager:
 
     def delete_attempts_by_test_id(self, test_id: str) -> int:
         """Delete all attempts for a test ID. Returns number removed."""
+        if self._api_enabled():
+            data = self._api_request("DELETE", f"/api/attempts/by-test/{test_id}")
+            if isinstance(data, dict):
+                return int(data.get("removed_count", 0) or 0)
+            return 0
         attempts = self.load_attempts()
         kept = []
         removed_count = 0
@@ -192,6 +228,30 @@ class UserDataManager:
             if student_roll == normalized_roll:
                 return True
         return False
+
+    def _api_enabled(self) -> bool:
+        return bool(API_BASE_URL)
+
+    def _api_headers(self) -> dict:
+        return {"X-API-Key": API_KEY} if API_KEY else {}
+
+    def _api_url(self, path: str) -> str:
+        return f"{API_BASE_URL.rstrip('/')}{path}"
+
+    def _api_request(self, method: str, path: str, payload=None):
+        if not self._api_enabled():
+            return None
+        resp = requests.request(
+            method,
+            self._api_url(path),
+            json=payload,
+            headers=self._api_headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        if resp.content:
+            return resp.json()
+        return None
 
     # ── persistence ──────────────────────────
 
