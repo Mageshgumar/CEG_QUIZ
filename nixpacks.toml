@@ -1,0 +1,11 @@
+[phases.setup]
+providers = ["python"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.start]
+cmd = "python bot.py"
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
