@@ -236,7 +236,10 @@ class UserDataManager:
         return {"X-API-Key": API_KEY} if API_KEY else {}
 
     def _api_url(self, path: str) -> str:
-        return f"{API_BASE_URL.rstrip('/')}{path}"
+        base = API_BASE_URL.rstrip("/")
+        if base and not base.startswith("http://") and not base.startswith("https://"):
+            base = f"https://{base}"
+        return f"{base}{path}"
 
     def _api_request(self, method: str, path: str, payload=None):
         if not self._api_enabled():

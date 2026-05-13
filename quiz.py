@@ -23,7 +23,10 @@ def _api_headers() -> dict:
 
 
 def _api_url(path: str) -> str:
-    return f"{API_BASE_URL.rstrip('/')}{path}"
+    base = API_BASE_URL.rstrip("/")
+    if base and not base.startswith("http://") and not base.startswith("https://"):
+        base = f"https://{base}"
+    return f"{base}{path}"
 
 
 def _api_request(method: str, path: str, payload=None):
