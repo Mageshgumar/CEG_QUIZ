@@ -33,7 +33,15 @@ from telegram.ext import (
     Defaults,
 )
 from imageio_ffmpeg import get_ffmpeg_exe
-import speech_recognition as sr
+
+try:
+    import speech_recognition as sr
+    SR_AVAILABLE = True
+except Exception as exc:
+    SR_AVAILABLE = False
+    sr = None
+    logger = logging.getLogger(__name__)
+    logger.warning("Speech recognition unavailable: %s", exc)
 
 # Ensure local imports work regardless of cwd
 sys.path.insert(0, os.path.dirname(__file__))
@@ -659,13 +667,6 @@ async def test_select_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     user["pending_test_id"] = test_id
     await safe_edit(
         query,
-        "🎯 *Test Selected!*\n\n"
-        f"🧪 Test: *{selected_test.get('name', 'Untitled Test')}*\n"
-        f"⏱️ Timer per question: *{int(selected_test.get('timer_seconds', 30) or 30)} seconds*\n"
-        f"📚 Questions you'll get: *{len(selected_test.get('questions', []))}*\n"
-        f"✅ Marks for correct: *{int(selected_test.get('mark_correct', 1) or 1)}*\n"
-        f"❌ Marks for wrong: *{int(selected_test.get('mark_incorrect', 0) or 0)}*\n\n"
-        "⏳ Timeouts will be considered as wrong answers.\n\n"
         "🆔 Please enter your *roll number* to continue:",
         parse_mode="Markdown",
     )
@@ -778,6 +779,8 @@ async def _transcribe_voice_message(update: Update,
                                     context: ContextTypes.DEFAULT_TYPE,
                                     options_count: int | None = None) -> str | None:
     """Download voice note, convert to wav, and return transcript text."""
+    if not SR_AVAILABLE:
+        return None
     message = update.message
     if not message or not message.voice:
         return None
@@ -1040,6 +1043,9 @@ async def quiz_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def quiz_voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Process a voice-note answer by transcribing to A/B/C/D."""
+    if not SR_AVAILABLE:
+        await safe_reply(update.message, "🎤 Voice answers are not available right now. Please type A, B, C, or D.")
+        return QUIZ
     chat_id = update.effective_chat.id
     user = user_manager.get_user(chat_id)
 
