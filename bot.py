@@ -495,7 +495,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle /start — greet and ask for name."""
     chat_id = update.effective_chat.id
 
-    # Check if the user might be a parent registering
+    # Check if the user might be a parent registering (legacy deep-link support)
     if context.args and context.args[0] == "parent":
         username = update.effective_user.username
         if username:
@@ -516,6 +516,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         parse_mode="Markdown",
     )
     return NAME
+
+
+async def register_parent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /register_parent — register as a parent to receive student results."""
+    chat_id = update.effective_chat.id
+    username = update.effective_user.username
+
+    if not username:
+        await safe_reply(
+            update.message,
+            "⚠️ You need a Telegram username to register as a parent.\n"
+            "Please set one in your Telegram settings and try again."
+        )
+        return
+
+    user_manager.register_parent(f"@{username}", chat_id)
+    await safe_reply(
+        update.message,
+        "👋 Welcome! You have been registered as a parent.\n"
+        "You will receive your child's quiz results here."
+    )
 
 
 async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1262,7 +1283,8 @@ def main() -> None:
         try:
             await app.bot.set_my_commands(
                 [
-                    BotCommand("start", "Begin quiz registration (or /start parent for parent registration)"),
+                    BotCommand("start", "Begin quiz registration"),
+                    BotCommand("register_parent", "Register as parent to receive results"),
                     BotCommand("cancel", "Cancel current session"),
                     BotCommand("leaderboard", "View top scores"),
                 ]
@@ -1315,6 +1337,7 @@ def main() -> None:
     )
 
     app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("register_parent", register_parent))
     app.add_handler(CommandHandler("leaderboard", leaderboard))
     app.add_error_handler(error_handler)
 
