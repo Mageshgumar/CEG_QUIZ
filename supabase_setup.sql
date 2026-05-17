@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS tests (
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
     version INTEGER NOT NULL DEFAULT 1,
     questions JSONB NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Kolkata'),
+    updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Kolkata')
 );
 
 CREATE INDEX IF NOT EXISTS idx_tests_teacher ON tests(teacher_username);
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS attempts (
     total_questions INTEGER NOT NULL,
     total_marks NUMERIC NOT NULL,
     answers JSONB NOT NULL,  -- [{question, user_answer, correct_answer, is_correct}, ...]
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    submitted_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Kolkata')
 );
 
 CREATE INDEX IF NOT EXISTS idx_attempts_teacher ON attempts(teacher_username);
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_attempts_roll ON attempts((student->>'roll'));
 CREATE TABLE IF NOT EXISTS parents (
     username TEXT PRIMARY KEY,  -- parent @username, unique identifier
     chat_id BIGINT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Kolkata')
 );
 
 -- Optional: Enable RLS (Row Level Security) for multi-tenancy
