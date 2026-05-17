@@ -148,12 +148,12 @@ def api_tests():
 @_api_key_required
 def api_attempts():
     if request.method == "GET":
-        return jsonify(user_manager.load_attempts(TEACHER_USERNAME))
+        return jsonify(user_manager.load_all_attempts())
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Expected attempt object"}), 400
-    user_manager.save_attempt(data, TEACHER_USERNAME)
+    user_manager.save_attempt(data, teacher_username=data.get("teacher_username"))
     return jsonify({"ok": True})
 
 

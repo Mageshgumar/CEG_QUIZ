@@ -197,6 +197,20 @@ class UserDataManager:
                 return []
         return []
 
+    def load_all_attempts(self) -> list[dict]:
+        """Load all attempts without teacher filtering (API/admin use)."""
+        if self._api_enabled():
+            data = self._api_request("GET", "/api/attempts")
+            return data if isinstance(data, list) else []
+        if os.path.exists(ATTEMPTS_FILE):
+            try:
+                with open(ATTEMPTS_FILE) as fp:
+                    data = json.load(fp)
+                return data if isinstance(data, list) else []
+            except json.JSONDecodeError:
+                return []
+        return []
+
     def has_attempt_for_roll(self, test_id: str, roll: str, teacher_username: str | None = None) -> bool:
         """Return True if the given roll has already submitted this test."""
         normalized_roll = str(roll).strip()
