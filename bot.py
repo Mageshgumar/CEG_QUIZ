@@ -20,7 +20,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.error import NetworkError, TimedOut
 from telegram.ext import (
     Application,
@@ -1257,6 +1257,19 @@ def main() -> None:
         global SEND_WORKER_TASK
         if SEND_WORKER_TASK is None:
             SEND_WORKER_TASK = asyncio.create_task(_send_worker(), name="send_worker")
+        
+        # Set bot commands to show in the "/" menu
+        try:
+            await app.bot.set_my_commands(
+                [
+                    BotCommand("start", "Begin quiz registration (or /start parent for parent registration)"),
+                    BotCommand("cancel", "Cancel current session"),
+                    BotCommand("leaderboard", "View top scores"),
+                ]
+            )
+            logger.info("Bot commands registered successfully")
+        except Exception as e:
+            logger.warning("Failed to set bot commands: %s", e)
 
     async def _post_shutdown(app: Application) -> None:
         global SEND_WORKER_TASK
