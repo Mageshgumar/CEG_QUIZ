@@ -1186,7 +1186,6 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
     user_manager.save_results()
     attempt = {
         "attempt_id": uuid4().hex,
-        "submitted_at": datetime.now(IST_TZ).isoformat(),
         "test_id": user.get("test_id", "default"),
         "test_name": user.get("test_name", "Untitled Test"),
         "test_version": user.get("test_version", 1),
