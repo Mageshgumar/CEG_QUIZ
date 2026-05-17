@@ -54,14 +54,10 @@ CREATE INDEX IF NOT EXISTS idx_attempts_roll ON attempts((student->>'roll'));
 
 -- Create parents table (for parent phone number mappings)
 CREATE TABLE IF NOT EXISTS parents (
-    teacher_username TEXT NOT NULL,
-    username TEXT NOT NULL,  -- parent @username
+    username TEXT PRIMARY KEY,  -- parent @username, unique identifier
     chat_id BIGINT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    PRIMARY KEY (teacher_username, username)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS idx_parents_teacher ON parents(teacher_username);
 
 -- Optional: Enable RLS (Row Level Security) for multi-tenancy
 -- Uncomment if you want to add row-level security policies

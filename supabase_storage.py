@@ -289,7 +289,7 @@ class StorageBackend:
 
     @staticmethod
     def get_parent_chat_id(parent_username: str, teacher_username: str) -> int | None:
-        """Get parent chat ID by username and teacher."""
+        """Get parent chat ID by username."""
         if not USE_SUPABASE:
             if os.path.exists(PARENTS_FILE):
                 with open(PARENTS_FILE) as fp:
@@ -306,7 +306,6 @@ class StorageBackend:
                 "parents",
                 params={
                     "select": "chat_id",
-                    "teacher_username": f"eq.{teacher_username.lower()}",
                     "username": f"eq.{parent_username.lower()}",
                 },
             )
@@ -319,7 +318,7 @@ class StorageBackend:
 
     @staticmethod
     def register_parent(parent_username: str, chat_id: int, teacher_username: str) -> None:
-        """Register or update parent mapping."""
+        """Register or update parent mapping (teacher_username ignored for Supabase)."""
         if not USE_SUPABASE:
             data = {}
             if os.path.exists(PARENTS_FILE):
@@ -336,12 +335,11 @@ class StorageBackend:
                 "POST",
                 "parents",
                 payload={
-                    "teacher_username": teacher_username.lower(),
                     "username": parent_username.lower(),
                     "chat_id": chat_id,
                 },
                 prefer="resolution=merge-duplicates,return=representation",
-                on_conflict="teacher_username,username",
+                on_conflict="username",
             )
         except Exception as e:
             print(f"Error registering parent in Supabase: {e}")
