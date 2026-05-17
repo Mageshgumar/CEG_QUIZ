@@ -26,6 +26,21 @@ from supabase_storage import StorageBackend
 print("Starting migration from JSON to Supabase...")
 
 
+def _normalize_attempt(attempt: dict) -> dict:
+    """Convert legacy attempt records into the current Supabase schema."""
+    normalized = dict(attempt)
+    answers = normalized.get("answers") or []
+    total_questions = normalized.get("total_questions")
+    if total_questions is None:
+        total_questions = len(answers)
+    normalized["total_questions"] = int(total_questions or 0)
+    normalized["test_version"] = int(normalized.get("test_version", 1) or 1)
+    normalized["total_marks"] = normalized.get("total_marks", normalized["total_questions"])
+    student = normalized.get("student") or {}
+    normalized["student"] = student if isinstance(student, dict) else {}
+    return normalized
+
+
 def migrate_tests():
     """Migrate tests.json to Supabase."""
     if not os.path.exists(TESTS_FILE):
@@ -60,7 +75,7 @@ def migrate_attempts():
 
     print(f"Migrating {len(attempts)} attempts...")
     for attempt in attempts:
-        StorageBackend.save_attempt(attempt)
+        StorageBackend.save_attempt(_normalize_attempt(attempt))
     print(f"✓ Migrated {len(attempts)} attempts")
     return len(attempts)
 

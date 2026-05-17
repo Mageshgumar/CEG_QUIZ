@@ -1249,8 +1249,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Build the Application and run polling."""
-    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
-        print("❌  Please set your bot token in config.py first!")
+    if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+        print("❌  Please set BOT_TOKEN in the deployment environment before starting the bot.")
         sys.exit(1)
 
     async def _post_init(app: Application) -> None:

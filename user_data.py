@@ -109,11 +109,15 @@ class UserDataManager:
             self._api_request(
                 "POST",
                 "/api/parents",
-                payload={"username": username, "chat_id": chat_id},
+                payload={
+                    "username": username,
+                    "chat_id": chat_id,
+                    "teacher_username": self._normalize_teacher_username(teacher_username),
+                },
             )
             return
         if USE_SUPABASE:
-            StorageBackend.register_parent(username, chat_id, teacher_username)
+            StorageBackend.register_parent(username, chat_id, self._normalize_teacher_username(teacher_username))
             return
         teacher_key = self._normalize_teacher_username(teacher_username)
         self._parent_chat_ids.setdefault(teacher_key, {})
@@ -127,7 +131,7 @@ class UserDataManager:
                 return data.get("chat_id")
             return None
         if USE_SUPABASE:
-            return StorageBackend.get_parent_chat_id(username, teacher_username)
+            return StorageBackend.get_parent_chat_id(username, self._normalize_teacher_username(teacher_username))
         teacher_key = self._normalize_teacher_username(teacher_username)
         return (self._parent_chat_ids.get(teacher_key) or {}).get(username.lower())
 
@@ -175,7 +179,10 @@ class UserDataManager:
             self._api_request("POST", "/api/attempts", payload=attempt)
             return
         if USE_SUPABASE:
-            StorageBackend.save_attempt(attempt)
+            try:
+                StorageBackend.save_attempt(attempt)
+            except Exception as e:
+                print(f"[save_attempt] Supabase error — attempt NOT saved: {e}")
             return
         attempts = []
         if os.path.exists(ATTEMPTS_FILE):

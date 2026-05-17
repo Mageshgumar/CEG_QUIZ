@@ -8,6 +8,10 @@ services:
     envVars:
       - key: DASHBOARD_SECRET
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
   - type: worker
     name: cegquiz-bot
     env: python
@@ -16,4 +20,8 @@ services:
     startCommand: python bot.py
     envVars:
       - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
         sync: false

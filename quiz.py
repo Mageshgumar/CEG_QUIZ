@@ -313,9 +313,11 @@ def update_test(test_id: str,
 def delete_test(test_id: str, teacher_username: str | None = None) -> bool:
     """Delete test by ID and keep remaining tests as-is."""
     if USE_SUPABASE:
+        StorageBackend.delete_attempts_by_test(test_id)
         return StorageBackend.delete_test(test_id)
-    
+
     tests = load_tests(teacher_username)
+    StorageBackend.delete_attempts_by_test(test_id)
     filtered = [test for test in tests if test.get("id") != test_id]
     if len(filtered) == len(tests):
         return False

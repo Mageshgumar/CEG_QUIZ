@@ -7,6 +7,8 @@ import json
 import os
 from datetime import datetime, timezone, timedelta
 
+import requests
+
 from config import (
     SUPABASE_URL,
     SUPABASE_KEY,
@@ -16,17 +18,56 @@ from config import (
     PARENTS_FILE,
 )
 
-if USE_SUPABASE:
-    from supabase import create_client, Client as SupabaseClient
-    supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
-else:
-    supabase = None
-
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
 
 class StorageBackend:
     """Unified storage interface for tests, attempts, and parents."""
+
+    @staticmethod
+    def _rest_url(table: str) -> str:
+        return f"{SUPABASE_URL.rstrip('/')}/rest/v1/{table}"
+
+    @staticmethod
+    def _headers(prefer: str | None = None) -> dict:
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+        }
+        if prefer:
+            headers["Prefer"] = prefer
+        return headers
+
+    @staticmethod
+    def _request(method: str, table: str, params: dict | None = None, payload=None,
+                 prefer: str | None = None, on_conflict: str | None = None):
+        url = StorageBackend._rest_url(table)
+        # on_conflict must be a query-string param for PostgREST upserts
+        merged_params = dict(params or {})
+        if on_conflict:
+            merged_params["on_conflict"] = on_conflict
+        resp = requests.request(
+            method,
+            url,
+            params=merged_params or None,
+            json=payload,
+            headers=StorageBackend._headers(prefer),
+            timeout=15,
+        )
+        try:
+            resp.raise_for_status()
+        except Exception:
+            # Surface the response body to make silent failures visible
+            body = ""
+            try:
+                body = resp.text[:500]
+            except Exception:
+                pass
+            raise RuntimeError(f"Supabase {method} /{table} failed [{resp.status_code}]: {body}")
+        if resp.content:
+            return resp.json()
+        return None
 
     @staticmethod
     def get_tests() -> list[dict]:
@@ -38,8 +79,8 @@ class StorageBackend:
             return []
 
         try:
-            result = supabase.table("tests").select("*").execute()
-            return result.data or []
+            data = StorageBackend._request("GET", "tests", params={"select": "*"})
+            return data or []
         except Exception as e:
             print(f"Error loading tests from Supabase: {e}")
             return []
@@ -53,11 +94,20 @@ class StorageBackend:
             return
 
         try:
-            # Delete all existing
-            supabase.table("tests").delete().neq("id", "").execute()
-            # Insert new batch
+            # Delete all existing rows — PostgREST requires at least one filter for DELETE.
+            # "id=not.is.null" matches every row that has an id (i.e. all rows).
+            StorageBackend._request(
+                "DELETE", "tests",
+                params={"id": "not.is.null"},
+                prefer="return=minimal",
+            )
+            # Re-insert the updated batch
             if tests:
-                supabase.table("tests").insert(tests).execute()
+                StorageBackend._request(
+                    "POST", "tests",
+                    payload=tests,
+                    prefer="return=representation",
+                )
         except Exception as e:
             print(f"Error saving tests to Supabase: {e}")
 
@@ -71,7 +121,7 @@ class StorageBackend:
             return
 
         try:
-            supabase.table("tests").insert(test).execute()
+            StorageBackend._request("POST", "tests", payload=test, prefer="return=representation")
         except Exception as e:
             print(f"Error adding test to Supabase: {e}")
 
@@ -88,8 +138,14 @@ class StorageBackend:
             return False
 
         try:
-            result = supabase.table("tests").update(updates).eq("id", test_id).execute()
-            return bool(result.data)
+            data = StorageBackend._request(
+                "PATCH",
+                "tests",
+                params={"id": f"eq.{test_id}"},
+                payload=updates,
+                prefer="return=representation",
+            )
+            return bool(data)
         except Exception as e:
             print(f"Error updating test in Supabase: {e}")
             return False
@@ -98,16 +154,26 @@ class StorageBackend:
     def delete_test(test_id: str) -> bool:
         """Delete a test by ID."""
         if not USE_SUPABASE:
-            tests = StorageBackend.get_tests()
+            # JSON fallback: load, filter, save
+            tests = []
+            if os.path.exists(TESTS_FILE):
+                with open(TESTS_FILE) as fp:
+                    tests = json.load(fp) or []
             filtered = [t for t in tests if t.get("id") != test_id]
-            if len(filtered) < len(tests):
-                StorageBackend.save_tests(filtered)
-                return True
-            return False
+            if len(filtered) == len(tests):
+                return False
+            with open(TESTS_FILE, "w") as fp:
+                json.dump(filtered, fp, indent=2)
+            return True
 
         try:
-            result = supabase.table("tests").delete().eq("id", test_id).execute()
-            return bool(result.data)
+            data = StorageBackend._request(
+                "DELETE",
+                "tests",
+                params={"id": f"eq.{test_id}"},
+                prefer="return=representation",
+            )
+            return bool(data)
         except Exception as e:
             print(f"Error deleting test from Supabase: {e}")
             return False
@@ -122,11 +188,35 @@ class StorageBackend:
             return []
 
         try:
-            result = supabase.table("attempts").select("*").execute()
-            return result.data or []
+            data = StorageBackend._request("GET", "attempts", params={"select": "*"})
+            return data or []
         except Exception as e:
             print(f"Error loading attempts from Supabase: {e}")
             return []
+
+    @staticmethod
+    def _normalize_attempt(attempt: dict) -> dict:
+        """Fill in fields required by the Supabase attempts table."""
+        normalized = dict(attempt)
+        answers = normalized.get("answers")
+        if not isinstance(answers, list):
+            answers = []
+        normalized["answers"] = answers
+        total_questions = normalized.get("total_questions")
+        if total_questions is None:
+            total_questions = len(answers)
+        normalized["total_questions"] = int(total_questions or 0)
+        normalized["test_version"] = int(normalized.get("test_version", 1) or 1)
+        normalized["total_marks"] = normalized.get("total_marks", normalized["total_questions"])
+        student = normalized.get("student") or {}
+        if not isinstance(student, dict):
+            student = {}
+        normalized["student"] = student
+        # Ensure required string fields are present
+        for field in ("attempt_id", "teacher_username", "test_id", "test_name"):
+            if not normalized.get(field):
+                raise ValueError(f"Missing required attempt field: {field}")
+        return normalized
 
     @staticmethod
     def save_attempt(attempt: dict) -> None:
@@ -139,9 +229,15 @@ class StorageBackend:
             return
 
         try:
-            supabase.table("attempts").insert(attempt).execute()
+            StorageBackend._request(
+                "POST",
+                "attempts",
+                payload=StorageBackend._normalize_attempt(attempt),
+                prefer="return=representation",
+            )
         except Exception as e:
             print(f"Error saving attempt to Supabase: {e}")
+            raise  # Re-raise so caller knows the save failed
 
     @staticmethod
     def delete_attempt(attempt_id: str) -> bool:
@@ -156,8 +252,13 @@ class StorageBackend:
             return False
 
         try:
-            result = supabase.table("attempts").delete().eq("attempt_id", attempt_id).execute()
-            return bool(result.data)
+            data = StorageBackend._request(
+                "DELETE",
+                "attempts",
+                params={"attempt_id": f"eq.{attempt_id}"},
+                prefer="return=representation",
+            )
+            return bool(data)
         except Exception as e:
             print(f"Error deleting attempt from Supabase: {e}")
             return False
@@ -175,8 +276,13 @@ class StorageBackend:
             return removed_count
 
         try:
-            result = supabase.table("attempts").delete().eq("test_id", test_id).execute()
-            return len(result.data) if result.data else 0
+            data = StorageBackend._request(
+                "DELETE",
+                "attempts",
+                params={"test_id": f"eq.{test_id}"},
+                prefer="return=representation",
+            )
+            return len(data) if data else 0
         except Exception as e:
             print(f"Error deleting attempts by test from Supabase: {e}")
             return 0
@@ -195,15 +301,17 @@ class StorageBackend:
             return None
 
         try:
-            result = (
-                supabase.table("parents")
-                .select("chat_id")
-                .eq("teacher_username", teacher_username.lower())
-                .eq("username", parent_username.lower())
-                .execute()
+            data = StorageBackend._request(
+                "GET",
+                "parents",
+                params={
+                    "select": "chat_id",
+                    "teacher_username": f"eq.{teacher_username.lower()}",
+                    "username": f"eq.{parent_username.lower()}",
+                },
             )
-            if result.data:
-                return int(result.data[0]["chat_id"])
+            if data:
+                return int(data[0]["chat_id"])
             return None
         except Exception as e:
             print(f"Error getting parent chat ID from Supabase: {e}")
@@ -224,12 +332,16 @@ class StorageBackend:
             return
 
         try:
-            supabase.table("parents").upsert(
-                {
+            StorageBackend._request(
+                "POST",
+                "parents",
+                payload={
                     "teacher_username": teacher_username.lower(),
                     "username": parent_username.lower(),
                     "chat_id": chat_id,
-                }
-            ).execute()
+                },
+                prefer="resolution=merge-duplicates,return=representation",
+                on_conflict="teacher_username,username",
+            )
         except Exception as e:
             print(f"Error registering parent in Supabase: {e}")

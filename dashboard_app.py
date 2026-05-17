@@ -189,9 +189,10 @@ def api_parent_set():
         return jsonify({"error": "Expected parent payload"}), 400
     username = str(data.get("username", "")).strip()
     chat_id = data.get("chat_id")
+    teacher_username = str(data.get("teacher_username", TEACHER_USERNAME)).strip() or TEACHER_USERNAME
     if not username or chat_id is None:
         return jsonify({"error": "username and chat_id required"}), 400
-    user_manager.register_parent(username, int(chat_id), TEACHER_USERNAME)
+    user_manager.register_parent(username, int(chat_id), teacher_username)
     return jsonify({"ok": True})
 
 
@@ -591,7 +592,11 @@ def edit_test(test_id: str):
 @login_required
 def remove_test(test_id: str):
     if delete_test(test_id, _current_teacher_username()):
-        flash("Test deleted. Ongoing student sessions for this test will be reset.", "success")
+        removed_count = user_manager.delete_attempts_by_test_id(test_id, _current_teacher_username())
+        if removed_count:
+            flash(f"Test deleted. Removed {removed_count} related attempts.", "success")
+        else:
+            flash("Test deleted. Ongoing student sessions for this test will be reset.", "success")
     else:
         flash("Test not found.", "error")
     return redirect(url_for("dashboard"))

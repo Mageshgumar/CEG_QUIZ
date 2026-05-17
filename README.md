@@ -43,7 +43,16 @@ cd telegram_quiz_bot
 pip install -r requirements.txt
 ```
 
-### 4. Run the Bot
+### 4. Configure Supabase (optional, for database-backed storage)
+
+If you want the bot and dashboard to write to Supabase instead of the local JSON files, set these environment variables before starting the app:
+
+- `SUPABASE_URL` - your project URL, for example `https://xxyhczjgwidmbktjqpni.supabase.co`
+- `SUPABASE_KEY` - the `service_role` key for server-side access
+
+If either variable is missing, the app falls back to JSON storage.
+
+### 5. Run the Bot
 
 ```bash
 python bot.py
@@ -113,6 +122,7 @@ Edit `questions.json`. Each entry follows this schema:
 - Uses `ConversationHandler` with states: `NAME → PHONE → ROLL → PARENT → QUIZ`
 - Each user's data is stored in-memory via `UserDataManager` and persisted to `results.json`
 - Inline keyboard buttons carry `callback_data` like `answer_0`, `answer_1`, etc.
+- Supabase support is enabled only when both `SUPABASE_URL` and `SUPABASE_KEY` are set
 
 ---
 
