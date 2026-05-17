@@ -14,6 +14,7 @@ from openpyxl import Workbook
 from config import TEACHER_USERNAME, TEACHER_PASSWORD, TEACHERS_FILE
 from quiz import (
     load_tests,
+    load_all_tests,
     save_tests,
     add_test,
     parse_test_file,
@@ -134,7 +135,7 @@ def _excel_response(workbook: Workbook, filename: str):
 @_api_key_required
 def api_tests():
     if request.method == "GET":
-        return jsonify(load_tests(TEACHER_USERNAME))
+        return jsonify(load_all_tests())
 
     data = request.get_json(silent=True)
     if not isinstance(data, list):
