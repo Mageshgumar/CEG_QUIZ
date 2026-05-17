@@ -60,11 +60,14 @@ def _find_teacher(username: str, teachers: list[dict]) -> dict | None:
 
 
 def _authenticate_teacher(username: str, password: str) -> bool:
+    if username == TEACHER_USERNAME and password == TEACHER_PASSWORD:
+        return True
+
     teachers = _load_teachers()
     if teachers:
         teacher = _find_teacher(username, teachers)
         return bool(teacher and check_password_hash(teacher.get("password_hash", ""), password))
-    return username == TEACHER_USERNAME and password == TEACHER_PASSWORD
+    return False
 
 
 def _register_teacher(username: str, password: str) -> tuple[bool, str]:
