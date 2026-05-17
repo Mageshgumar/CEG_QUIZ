@@ -817,5 +817,84 @@
         "is_correct": false
       }
     ]
+  },
+  {
+    "attempt_id": "94da14a20d654c8da3b73a3671dcc4be",
+    "submitted_at": "2026-05-17T12:36:35.235696+05:30",
+    "test_id": "ea855877cc05",
+    "test_name": "GK",
+    "test_version": 1,
+    "student": {
+      "name": "Magesh Gumar M",
+      "roll": "2023103612",
+      "phone": "9025444082",
+      "chat_id": 5317093950,
+      "parent_username": "@gumar2005"
+    },
+    "score": 2,
+    "total_questions": 10,
+    "total_marks": 10,
+    "answers": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "user_answer": "A. Earth",
+        "correct_answer": "C. Jupiter",
+        "is_correct": false
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "user_answer": "B. Kotlin",
+        "correct_answer": "B. Kotlin",
+        "is_correct": true
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "user_answer": "A. 50\u00b0C",
+        "correct_answer": "C. 100\u00b0C",
+        "is_correct": false
+      },
+      {
+        "question": "Who invented the telephone?",
+        "user_answer": "C. Alexander Graham Bell",
+        "correct_answer": "C. Alexander Graham Bell",
+        "is_correct": true
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "user_answer": "B. Japan",
+        "correct_answer": "B. Japan",
+        "is_correct": true
+      },
+      {
+        "question": "What does CPU stand for?",
+        "user_answer": "A. Central Processing Unit",
+        "correct_answer": "A. Central Processing Unit",
+        "is_correct": true
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "user_answer": "D. Hydrogen",
+        "correct_answer": "C. Carbon Dioxide",
+        "is_correct": false
+      },
+      {
+        "question": "What is the square root of 81?",
+        "user_answer": "D. 10",
+        "correct_answer": "C. 9",
+        "is_correct": false
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "user_answer": "D. Pacific Ocean",
+        "correct_answer": "D. Pacific Ocean",
+        "is_correct": true
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "user_answer": "B. William Shakespeare",
+        "correct_answer": "B. William Shakespeare",
+        "is_correct": true
+      }
+    ]
   }
 ]

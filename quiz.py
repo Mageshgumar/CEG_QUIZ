@@ -9,7 +9,8 @@ import os
 import requests
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import QUESTIONS_FILE, TESTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME
+from config import QUESTIONS_FILE, TESTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME, USE_SUPABASE
+from supabase_storage import StorageBackend
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_TEACHER = TEACHER_USERNAME
@@ -109,7 +110,10 @@ def _load_all_tests() -> list[dict]:
         data = _api_request("GET", "/api/tests")
         return data if isinstance(data, list) else []
 
-    tests = _read_tests_file()
+    if USE_SUPABASE:
+        tests = StorageBackend.get_tests()
+    else:
+        tests = _read_tests_file()
 
     normalized = False
     for test in tests:
@@ -136,7 +140,10 @@ def _load_all_tests() -> list[dict]:
             normalized = True
 
     if normalized:
-        _write_tests_file(tests)
+        if USE_SUPABASE:
+            StorageBackend.save_tests(tests)
+        else:
+            _write_tests_file(tests)
 
     return tests
 
@@ -164,7 +171,11 @@ def save_tests(tests: list[dict], teacher_username: str | None = None) -> None:
 
     all_tests = _load_all_tests()
     kept = [test for test in all_tests if not _test_belongs_to_teacher(test, owner)]
-    _write_tests_file(kept + tests)
+    
+    if USE_SUPABASE:
+        StorageBackend.save_tests(kept + tests)
+    else:
+        _write_tests_file(kept + tests)
 
 
 def get_active_test(teacher_username: str | None = None) -> dict | None:
@@ -250,9 +261,32 @@ def update_test(test_id: str,
                 make_active: bool = False,
                 teacher_username: str | None = None) -> bool:
     """Replace test content and metadata, incrementing version for session invalidation."""
+    now = datetime.now(IST_TZ).isoformat()
+    
+    if USE_SUPABASE:
+        all_tests = StorageBackend.get_tests()
+        target = next((t for t in all_tests if t.get("id") == test_id), None)
+        if not target:
+            return False
+        
+        updates = {
+            "name": name.strip() or target.get("name", "Untitled Test"),
+            "timer_seconds": max(5, int(timer_seconds)),
+            "random_count": max(0, min(int(random_count), len(questions))),
+            "one_time": bool(one_time),
+            "mark_correct": int(mark_correct),
+            "mark_incorrect": int(mark_incorrect),
+            "questions": questions,
+            "version": int(target.get("version", 1)) + 1,
+            "updated_at": now,
+        }
+        if make_active:
+            updates["is_active"] = True
+        
+        return StorageBackend.update_test(test_id, updates)
+    
     tests = load_tests(teacher_username)
     found = False
-    now = datetime.now(IST_TZ).isoformat()
 
     for test in tests:
         if test.get("id") != test_id:
@@ -278,6 +312,9 @@ def update_test(test_id: str,
 
 def delete_test(test_id: str, teacher_username: str | None = None) -> bool:
     """Delete test by ID and keep remaining tests as-is."""
+    if USE_SUPABASE:
+        return StorageBackend.delete_test(test_id)
+    
     tests = load_tests(teacher_username)
     filtered = [test for test in tests if test.get("id") != test_id]
     if len(filtered) == len(tests):
@@ -350,14 +387,18 @@ def parse_test_file(content: str) -> list[dict]:
 
 def add_test(test: dict, make_active: bool = False, teacher_username: str | None = None) -> None:
     """Insert a new test and optionally mark it active."""
-    tests = load_tests(teacher_username)
     if make_active:
         test["is_active"] = True
     test.setdefault("version", 1)
     test.setdefault("updated_at", datetime.now(IST_TZ).isoformat())
     test["teacher_username"] = _normalize_teacher_username(teacher_username)
-    tests.append(test)
-    save_tests(tests, teacher_username)
+    
+    if USE_SUPABASE:
+        StorageBackend.add_test(test)
+    else:
+        tests = load_tests(teacher_username)
+        tests.append(test)
+        save_tests(tests, teacher_username)
 
 
 def build_test(name: str,

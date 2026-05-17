@@ -9,7 +9,8 @@ from urllib.parse import quote
 
 import requests
 
-from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME
+from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME, USE_SUPABASE
+from supabase_storage import StorageBackend
 
 
 # ──────────────────────────────────────────────
@@ -111,6 +112,9 @@ class UserDataManager:
                 payload={"username": username, "chat_id": chat_id},
             )
             return
+        if USE_SUPABASE:
+            StorageBackend.register_parent(username, chat_id, teacher_username)
+            return
         teacher_key = self._normalize_teacher_username(teacher_username)
         self._parent_chat_ids.setdefault(teacher_key, {})
         self._parent_chat_ids[teacher_key][username.lower()] = chat_id
@@ -122,6 +126,8 @@ class UserDataManager:
             if isinstance(data, dict):
                 return data.get("chat_id")
             return None
+        if USE_SUPABASE:
+            return StorageBackend.get_parent_chat_id(username, teacher_username)
         teacher_key = self._normalize_teacher_username(teacher_username)
         return (self._parent_chat_ids.get(teacher_key) or {}).get(username.lower())
 
@@ -168,6 +174,9 @@ class UserDataManager:
         if self._api_enabled():
             self._api_request("POST", "/api/attempts", payload=attempt)
             return
+        if USE_SUPABASE:
+            StorageBackend.save_attempt(attempt)
+            return
         attempts = []
         if os.path.exists(ATTEMPTS_FILE):
             try:
@@ -187,6 +196,9 @@ class UserDataManager:
             data = self._api_request("GET", "/api/attempts")
             attempts = data if isinstance(data, list) else []
             return [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
+        if USE_SUPABASE:
+            attempts = StorageBackend.get_attempts()
+            return [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
@@ -202,6 +214,8 @@ class UserDataManager:
         if self._api_enabled():
             data = self._api_request("GET", "/api/attempts")
             return data if isinstance(data, list) else []
+        if USE_SUPABASE:
+            return StorageBackend.get_attempts()
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
@@ -229,6 +243,9 @@ class UserDataManager:
             if isinstance(data, dict):
                 return bool(data.get("deleted")), data.get("removed")
             return False, None
+        if USE_SUPABASE:
+            deleted = StorageBackend.delete_attempt(attempt_id)
+            return deleted, None
         owner = self._normalize_teacher_username(teacher_username)
         attempts = []
         if os.path.exists(ATTEMPTS_FILE):
@@ -265,6 +282,8 @@ class UserDataManager:
             if isinstance(data, dict):
                 return int(data.get("removed_count", 0) or 0)
             return 0
+        if USE_SUPABASE:
+            return StorageBackend.delete_attempts_by_test(test_id)
         owner = self._normalize_teacher_username(teacher_username)
         attempts = []
         if os.path.exists(ATTEMPTS_FILE):

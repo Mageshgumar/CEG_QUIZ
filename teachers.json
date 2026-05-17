@@ -1,0 +1,18 @@
+[
+  {
+    "username": "Magesh",
+    "password_hash": "scrypt:32768:8:1$Xuuxuoe9X65zX8KU$7af52a9c2520cf7af75ee5400e38f5a0e64b99b697cee5aa1847b66c90af8c2936d9e0707d579110ac4d8ea297480b0301c6706dbfae1ed7727463c6e26b1175"
+  },
+  {
+    "username": "Gumar",
+    "password_hash": "scrypt:32768:8:1$dnjoAXCi77j4na9G$809f3ff712d561777005153ad87601ff1bb1cd0206de1f2092d19d5e70ec8dc12a964b20c6a885051f96c6e3f222c261ad79082fa4fa24ea3b0a28e073ce732e"
+  },
+  {
+    "username": "teacher",
+    "password_hash": "scrypt:32768:8:1$BiEpAcNAeROzgJsu$d39a133d7780686fd228ae2ed83eaec27554c3da1041a156e4d3c8b52c7776920d938420079d329eb782e27afeb69ced4e89e11756a4935a5338bbff3553759b"
+  },
+  {
+    "username": "Kumar",
+    "password_hash": "scrypt:32768:8:1$2P0HTtthz0bgztZH$02474fc5798a066e9cecf6c6b58a4cc1f4e15e922d62cd0fa1bda7507efc3712460fe2b7e767c3b7b7472ee643b3bb91c3e603045b480e8c1580115830db90f0"
+  }
+]

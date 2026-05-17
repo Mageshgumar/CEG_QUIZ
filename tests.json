@@ -1,235 +1,5 @@
 [
   {
-    "id": "fa60b69af423",
-    "name": "Bharath",
-    "timer_seconds": 30,
-    "random_count": 3,
-    "one_time": false,
-    "is_active": true,
-    "version": 2,
-    "questions": [
-      {
-        "question": "What is the square root of 81?",
-        "options": [
-          "7",
-          "8",
-          "9",
-          "10"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which planet is known as the Red Planet?",
-        "options": [
-          "Earth",
-          "Mars",
-          "Jupiter",
-          "Venus"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is 15 \u00d7 3?",
-        "options": [
-          "30",
-          "35",
-          "45",
-          "50"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Who developed the theory of relativity?",
-        "options": [
-          "Newton",
-          "Einstein",
-          "Galileo",
-          "Tesla"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is the capital of Japan?",
-        "options": [
-          "Beijing",
-          "Seoul",
-          "Tokyo",
-          "Bangkok"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which data structure uses FIFO?",
-        "options": [
-          "Stack",
-          "Queue",
-          "Tree",
-          "Graph"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is the chemical symbol for Gold?",
-        "options": [
-          "Au",
-          "Ag",
-          "Gd",
-          "Go"
-        ],
-        "correct_option": 0
-      },
-      {
-        "question": "What is 100 \u00f7 4?",
-        "options": [
-          "20",
-          "25",
-          "30",
-          "40"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "Which language is primarily used for web development?",
-        "options": [
-          "Python",
-          "C++",
-          "HTML",
-          "Java"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "What does CPU stand for?",
-        "options": [
-          "Central Process Unit",
-          "Central Processing Unit",
-          "Computer Personal Unit",
-          "Central Power Unit"
-        ],
-        "correct_option": 1
-      }
-    ],
-    "created_at": "2026-04-06T14:44:33.596335",
-    "updated_at": "2026-04-06T15:03:27.730327",
-    "mark_correct": 1,
-    "mark_incorrect": 0
-  },
-  {
-    "id": "4c2ac067d277",
-    "name": "magesh",
-    "timer_seconds": 15,
-    "random_count": 5,
-    "one_time": true,
-    "is_active": true,
-    "version": 1,
-    "questions": [
-      {
-        "question": "What is the square root of 81?",
-        "options": [
-          "7",
-          "8",
-          "9",
-          "10"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which planet is known as the Red Planet?",
-        "options": [
-          "Earth",
-          "Mars",
-          "Jupiter",
-          "Venus"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is 15 \u00d7 3?",
-        "options": [
-          "30",
-          "35",
-          "45",
-          "50"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Who developed the theory of relativity?",
-        "options": [
-          "Newton",
-          "Einstein",
-          "Galileo",
-          "Tesla"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is the capital of Japan?",
-        "options": [
-          "Beijing",
-          "Seoul",
-          "Tokyo",
-          "Bangkok"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which data structure uses FIFO?",
-        "options": [
-          "Stack",
-          "Queue",
-          "Tree",
-          "Graph"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is the chemical symbol for Gold?",
-        "options": [
-          "Au",
-          "Ag",
-          "Gd",
-          "Go"
-        ],
-        "correct_option": 0
-      },
-      {
-        "question": "What is 100 \u00f7 4?",
-        "options": [
-          "20",
-          "25",
-          "30",
-          "40"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "Which language is primarily used for web development?",
-        "options": [
-          "Python",
-          "C++",
-          "HTML",
-          "Java"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "What does CPU stand for?",
-        "options": [
-          "Central Process Unit",
-          "Central Processing Unit",
-          "Computer Personal Unit",
-          "Central Power Unit"
-        ],
-        "correct_option": 1
-      }
-    ],
-    "created_at": "2026-04-07T16:41:03.474469",
-    "updated_at": "2026-04-07T16:41:03.474469",
-    "mark_correct": 1,
-    "mark_incorrect": 0
-  },
-  {
     "id": "3df90aadf15d",
     "name": "ML TEST",
     "timer_seconds": 30,
@@ -342,7 +112,8 @@
     "created_at": "2026-04-08T05:19:37.855891",
     "updated_at": "2026-04-08T05:19:37.855891",
     "mark_correct": 1,
-    "mark_incorrect": 0
+    "mark_incorrect": 0,
+    "teacher_username": "teacher"
   },
   {
     "id": "895411a70468",
@@ -457,7 +228,8 @@
     "created_at": "2026-05-10T16:45:43.603028",
     "updated_at": "2026-05-10T16:52:46.418029",
     "mark_correct": 1,
-    "mark_incorrect": 0
+    "mark_incorrect": 0,
+    "teacher_username": "teacher"
   },
   {
     "id": "4e6e89de9bfb",
@@ -572,122 +344,8 @@
     "created_at": "2026-05-11T11:03:39.475626",
     "updated_at": "2026-05-11T11:03:39.475626",
     "mark_correct": 1,
-    "mark_incorrect": 0
-  },
-  {
-    "id": "bdb4da3facd7",
-    "name": "s",
-    "timer_seconds": 30,
-    "random_count": 0,
-    "one_time": true,
-    "is_active": true,
-    "version": 2,
-    "questions": [
-      {
-        "question": "What is the largest planet in our solar system?",
-        "options": [
-          "Earth",
-          "Mars",
-          "Jupiter",
-          "Venus"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which language is primarily used for Android app development?",
-        "options": [
-          "Swift",
-          "Kotlin",
-          "Ruby",
-          "PHP"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What is the boiling point of water at sea level?",
-        "options": [
-          "50\u00b0C",
-          "75\u00b0C",
-          "100\u00b0C",
-          "120\u00b0C"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Who invented the telephone?",
-        "options": [
-          "Isaac Newton",
-          "Albert Einstein",
-          "Alexander Graham Bell",
-          "Nikola Tesla"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which country is known as the Land of the Rising Sun?",
-        "options": [
-          "China",
-          "Japan",
-          "Thailand",
-          "Korea"
-        ],
-        "correct_option": 1
-      },
-      {
-        "question": "What does CPU stand for?",
-        "options": [
-          "Central Processing Unit",
-          "Computer Personal Unit",
-          "Central Program Utility",
-          "Control Processing User"
-        ],
-        "correct_option": 0
-      },
-      {
-        "question": "Which gas do plants absorb from the atmosphere?",
-        "options": [
-          "Oxygen",
-          "Nitrogen",
-          "Carbon Dioxide",
-          "Hydrogen"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "What is the square root of 81?",
-        "options": [
-          "7",
-          "8",
-          "9",
-          "10"
-        ],
-        "correct_option": 2
-      },
-      {
-        "question": "Which ocean is the largest?",
-        "options": [
-          "Atlantic Ocean",
-          "Indian Ocean",
-          "Arctic Ocean",
-          "Pacific Ocean"
-        ],
-        "correct_option": 3
-      },
-      {
-        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
-        "options": [
-          "Charles Dickens",
-          "William Shakespeare",
-          "Leo Tolstoy",
-          "Mark Twain"
-        ],
-        "correct_option": 1
-      }
-    ],
-    "created_at": "2026-05-11T11:34:03.450019",
-    "updated_at": "2026-05-11T11:34:24.189156",
-    "mark_correct": 1,
-    "mark_incorrect": 0
+    "mark_incorrect": 0,
+    "teacher_username": "teacher"
   },
   {
     "id": "17773d686401",
@@ -802,7 +460,8 @@
       }
     ],
     "created_at": "2026-05-11T14:32:50.691107",
-    "updated_at": "2026-05-11T20:56:24.813937+05:30"
+    "updated_at": "2026-05-11T20:56:24.813937+05:30",
+    "teacher_username": "teacher"
   },
   {
     "id": "b7f234af179d",
@@ -917,6 +576,703 @@
       }
     ],
     "created_at": "2026-05-13T19:37:40.044918+05:30",
-    "updated_at": "2026-05-13T19:37:40.044918+05:30"
+    "updated_at": "2026-05-13T19:37:40.044918+05:30",
+    "teacher_username": "teacher"
+  },
+  {
+    "id": "ea855877cc05",
+    "name": "GK",
+    "timer_seconds": 30,
+    "random_count": 0,
+    "one_time": true,
+    "mark_correct": 1,
+    "mark_incorrect": -1,
+    "is_active": true,
+    "version": 1,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T12:34:15.566416+05:30",
+    "updated_at": "2026-05-17T12:34:15.566416+05:30",
+    "teacher_username": "teacher"
+  },
+  {
+    "id": "14040be52718",
+    "name": "Helo",
+    "timer_seconds": 30,
+    "random_count": 0,
+    "one_time": true,
+    "mark_correct": 1,
+    "mark_incorrect": 0,
+    "is_active": true,
+    "version": 1,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T13:39:27.039171+05:30",
+    "updated_at": "2026-05-17T13:39:27.039171+05:30",
+    "teacher_username": "magesh"
+  },
+  {
+    "id": "cd1fc0bcb67e",
+    "name": "Hi",
+    "timer_seconds": 30,
+    "random_count": 4,
+    "one_time": false,
+    "mark_correct": 1,
+    "mark_incorrect": 0,
+    "is_active": true,
+    "version": 1,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T14:39:22.589231+05:30",
+    "updated_at": "2026-05-17T14:39:22.589231+05:30",
+    "teacher_username": "magesh"
+  },
+  {
+    "id": "5b8a3d30695b",
+    "name": "Good",
+    "timer_seconds": 30,
+    "random_count": 4,
+    "one_time": false,
+    "mark_correct": 1,
+    "mark_incorrect": 0,
+    "is_active": true,
+    "version": 1,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T14:43:38.425463+05:30",
+    "updated_at": "2026-05-17T14:43:38.425463+05:30",
+    "teacher_username": "magesh"
+  },
+  {
+    "id": "b88ca22d0f5a",
+    "name": "Morning",
+    "timer_seconds": 10,
+    "random_count": 5,
+    "one_time": false,
+    "mark_correct": 1,
+    "mark_incorrect": -5,
+    "is_active": true,
+    "version": 2,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T14:46:09.438336+05:30",
+    "updated_at": "2026-05-17T15:19:11.156804+05:30",
+    "teacher_username": "kumar"
+  },
+  {
+    "id": "88341a1165ba",
+    "name": "Physics",
+    "timer_seconds": 30,
+    "random_count": 2,
+    "one_time": false,
+    "mark_correct": 1,
+    "mark_incorrect": 0,
+    "is_active": true,
+    "version": 1,
+    "questions": [
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": [
+          "Earth",
+          "Mars",
+          "Jupiter",
+          "Venus"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which language is primarily used for Android app development?",
+        "options": [
+          "Swift",
+          "Kotlin",
+          "Ruby",
+          "PHP"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What is the boiling point of water at sea level?",
+        "options": [
+          "50\u00b0C",
+          "75\u00b0C",
+          "100\u00b0C",
+          "120\u00b0C"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Who invented the telephone?",
+        "options": [
+          "Isaac Newton",
+          "Albert Einstein",
+          "Alexander Graham Bell",
+          "Nikola Tesla"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which country is known as the Land of the Rising Sun?",
+        "options": [
+          "China",
+          "Japan",
+          "Thailand",
+          "Korea"
+        ],
+        "correct_option": 1
+      },
+      {
+        "question": "What does CPU stand for?",
+        "options": [
+          "Central Processing Unit",
+          "Computer Personal Unit",
+          "Central Program Utility",
+          "Control Processing User"
+        ],
+        "correct_option": 0
+      },
+      {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "options": [
+          "Oxygen",
+          "Nitrogen",
+          "Carbon Dioxide",
+          "Hydrogen"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "What is the square root of 81?",
+        "options": [
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "correct_option": 2
+      },
+      {
+        "question": "Which ocean is the largest?",
+        "options": [
+          "Atlantic Ocean",
+          "Indian Ocean",
+          "Arctic Ocean",
+          "Pacific Ocean"
+        ],
+        "correct_option": 3
+      },
+      {
+        "question": "Who wrote the play \u201cRomeo and Juliet\u201d?",
+        "options": [
+          "Charles Dickens",
+          "William Shakespeare",
+          "Leo Tolstoy",
+          "Mark Twain"
+        ],
+        "correct_option": 1
+      }
+    ],
+    "created_at": "2026-05-17T14:56:41.536305+05:30",
+    "updated_at": "2026-05-17T14:56:41.536305+05:30",
+    "teacher_username": "kumar"
   }
 ]
