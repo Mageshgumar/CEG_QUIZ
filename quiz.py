@@ -9,9 +9,10 @@ import os
 import requests
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import QUESTIONS_FILE, TESTS_FILE, API_BASE_URL, API_KEY
+from config import QUESTIONS_FILE, TESTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
+DEFAULT_TEACHER = TEACHER_USERNAME
 
 
 def _api_enabled() -> bool:
@@ -44,6 +45,18 @@ def _api_request(method: str, path: str, payload=None):
         return resp.json()
     return None
 
+
+def _normalize_teacher_username(teacher_username: str | None) -> str:
+    normalized = (teacher_username or DEFAULT_TEACHER).strip().lower()
+    return normalized or DEFAULT_TEACHER.lower()
+
+
+def _test_belongs_to_teacher(test: dict, teacher_username: str) -> bool:
+    stored = str(test.get("teacher_username", "")).strip().lower()
+    if not stored:
+        stored = DEFAULT_TEACHER.lower()
+    return stored == teacher_username
+
 # ──────────────────────────────────────────────
 # Question loading
 # ──────────────────────────────────────────────
@@ -71,25 +84,38 @@ def _ensure_test_file() -> None:
         "questions": default_questions,
         "created_at": datetime.now(IST_TZ).isoformat(),
         "updated_at": datetime.now(IST_TZ).isoformat(),
+        "teacher_username": DEFAULT_TEACHER,
     }
 
     with open(TESTS_FILE, "w") as fp:
         json.dump([default_test], fp, indent=2)
 
 
-def load_tests() -> list[dict]:
+def _read_tests_file() -> list[dict]:
+    _ensure_test_file()
+    with open(TESTS_FILE) as fp:
+        tests = json.load(fp)
+    return tests if isinstance(tests, list) else []
+
+
+def _write_tests_file(tests: list[dict]) -> None:
+    with open(TESTS_FILE, "w") as fp:
+        json.dump(tests, fp, indent=2)
+
+
+def _load_all_tests() -> list[dict]:
     """Load all tests from persistent storage."""
     if _api_enabled():
         data = _api_request("GET", "/api/tests")
         return data if isinstance(data, list) else []
 
-    _ensure_test_file()
-    with open(TESTS_FILE) as fp:
-        tests = json.load(fp)
-    tests = tests if isinstance(tests, list) else []
+    tests = _read_tests_file()
 
     normalized = False
     for test in tests:
+        if "teacher_username" not in test:
+            test["teacher_username"] = DEFAULT_TEACHER
+            normalized = True
         if "one_time" not in test:
             test["one_time"] = False
             normalized = True
@@ -110,75 +136,104 @@ def load_tests() -> list[dict]:
             normalized = True
 
     if normalized:
-        save_tests(tests)
+        _write_tests_file(tests)
 
     return tests
 
 
-def save_tests(tests: list[dict]) -> None:
-    """Save all tests to persistent storage."""
+def load_tests(teacher_username: str | None = None) -> list[dict]:
+    """Load all tests for a specific teacher."""
+    owner = _normalize_teacher_username(teacher_username)
+    return [test for test in _load_all_tests() if _test_belongs_to_teacher(test, owner)]
+
+
+def load_all_tests() -> list[dict]:
+    """Load all tests across teachers (used by the bot)."""
+    return _load_all_tests()
+
+
+def save_tests(tests: list[dict], teacher_username: str | None = None) -> None:
+    """Save all tests for a specific teacher."""
     if _api_enabled():
         _api_request("POST", "/api/tests", payload=tests)
         return
 
-    with open(TESTS_FILE, "w") as fp:
-        json.dump(tests, fp, indent=2)
+    owner = _normalize_teacher_username(teacher_username)
+    for test in tests:
+        test["teacher_username"] = owner
+
+    all_tests = _load_all_tests()
+    kept = [test for test in all_tests if not _test_belongs_to_teacher(test, owner)]
+    _write_tests_file(kept + tests)
 
 
-def get_active_test() -> dict | None:
+def get_active_test(teacher_username: str | None = None) -> dict | None:
     """Return currently active test or None when no active test exists."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     for test in tests:
         if test.get("is_active"):
             return test
     return None
 
 
-def get_active_tests() -> list[dict]:
+def get_active_tests(teacher_username: str | None = None) -> list[dict]:
     """Return all tests currently marked active."""
-    return [test for test in load_tests() if test.get("is_active")]
+    return [test for test in load_tests(teacher_username) if test.get("is_active")]
 
 
-def set_active_test(test_id: str) -> bool:
+def get_all_active_tests() -> list[dict]:
+    """Return active tests across all teachers."""
+    return [test for test in _load_all_tests() if test.get("is_active")]
+
+
+def set_active_test(test_id: str, teacher_username: str | None = None) -> bool:
     """Mark a test active by ID. Returns True if found."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     found = False
     for test in tests:
         if test.get("id") == test_id:
             test["is_active"] = True
             found = True
     if found:
-        save_tests(tests)
+        save_tests(tests, teacher_username)
     return found
 
 
-def set_test_inactive(test_id: str) -> bool:
+def set_test_inactive(test_id: str, teacher_username: str | None = None) -> bool:
     """Mark a test inactive by ID. Returns True if found."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     found = False
     for test in tests:
         if test.get("id") == test_id:
             test["is_active"] = False
             found = True
     if found:
-        save_tests(tests)
+        save_tests(tests, teacher_username)
     return found
 
 
-def set_all_tests_inactive() -> bool:
+def set_all_tests_inactive(teacher_username: str | None = None) -> bool:
     """Mark all tests inactive. Returns True if at least one test existed."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     if not tests:
         return False
     for test in tests:
         test["is_active"] = False
-    save_tests(tests)
+    save_tests(tests, teacher_username)
     return True
 
 
-def get_test_by_id(test_id: str) -> dict | None:
+def get_test_by_id(test_id: str, teacher_username: str | None = None) -> dict | None:
     """Return test dict by ID or None."""
-    for test in load_tests():
+    for test in load_tests(teacher_username):
+        if test.get("id") == test_id:
+            return test
+    return None
+
+
+def get_test_by_id_any(test_id: str) -> dict | None:
+    """Return test dict by ID across all teachers (used by the bot)."""
+    for test in _load_all_tests():
         if test.get("id") == test_id:
             return test
     return None
@@ -192,9 +247,10 @@ def update_test(test_id: str,
                 one_time: bool,
                 mark_correct: int = 1,
                 mark_incorrect: int = 0,
-                make_active: bool = False) -> bool:
+                make_active: bool = False,
+                teacher_username: str | None = None) -> bool:
     """Replace test content and metadata, incrementing version for session invalidation."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     found = False
     now = datetime.now(IST_TZ).isoformat()
 
@@ -216,17 +272,17 @@ def update_test(test_id: str,
             test["is_active"] = True
 
     if found:
-        save_tests(tests)
+        save_tests(tests, teacher_username)
     return found
 
 
-def delete_test(test_id: str) -> bool:
+def delete_test(test_id: str, teacher_username: str | None = None) -> bool:
     """Delete test by ID and keep remaining tests as-is."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     filtered = [test for test in tests if test.get("id") != test_id]
     if len(filtered) == len(tests):
         return False
-    save_tests(filtered)
+    save_tests(filtered, teacher_username)
     return True
 
 
@@ -292,15 +348,16 @@ def parse_test_file(content: str) -> list[dict]:
     return questions
 
 
-def add_test(test: dict, make_active: bool = False) -> None:
+def add_test(test: dict, make_active: bool = False, teacher_username: str | None = None) -> None:
     """Insert a new test and optionally mark it active."""
-    tests = load_tests()
+    tests = load_tests(teacher_username)
     if make_active:
         test["is_active"] = True
     test.setdefault("version", 1)
     test.setdefault("updated_at", datetime.now(IST_TZ).isoformat())
+    test["teacher_username"] = _normalize_teacher_username(teacher_username)
     tests.append(test)
-    save_tests(tests)
+    save_tests(tests, teacher_username)
 
 
 def build_test(name: str,
@@ -310,7 +367,8 @@ def build_test(name: str,
                one_time: bool,
                mark_correct: int = 1,
                mark_incorrect: int = 0,
-               is_active: bool = False) -> dict:
+               is_active: bool = False,
+               teacher_username: str | None = None) -> dict:
     """Create a normalized test document."""
     safe_name = name.strip() or "Untitled Test"
     hash_src = f"{safe_name}:{datetime.now(IST_TZ).isoformat()}"
@@ -330,6 +388,7 @@ def build_test(name: str,
         "questions": questions,
         "created_at": now,
         "updated_at": now,
+        "teacher_username": _normalize_teacher_username(teacher_username),
     }
 
 

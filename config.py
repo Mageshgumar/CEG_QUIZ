@@ -35,6 +35,7 @@ RESULTS_FILE = "results.json"
 PARENTS_FILE = "parents.json"
 TESTS_FILE = "tests.json"
 ATTEMPTS_FILE = "attempts.json"
+TEACHERS_FILE = "teachers.json"
 TIMER_DURATION = 30  # seconds per question (optional feature)
 
 # Teacher dashboard login

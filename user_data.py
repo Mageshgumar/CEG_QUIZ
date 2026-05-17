@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 import requests
 
-from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY
+from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME
 
 
 # ──────────────────────────────────────────────
@@ -45,6 +45,16 @@ class UserDataManager:
         # parent_username → chat_id (populated when a parent /starts the bot)
         self._parent_chat_ids: dict[str, int] = {}
         self._load_parent_chat_ids()
+
+    def _normalize_teacher_username(self, teacher_username: str | None) -> str:
+        normalized = (teacher_username or TEACHER_USERNAME).strip().lower()
+        return normalized or TEACHER_USERNAME.lower()
+
+    def _attempt_belongs_to_teacher(self, attempt: dict, teacher_username: str) -> bool:
+        stored = str(attempt.get("teacher_username", "")).strip().lower()
+        if not stored:
+            stored = TEACHER_USERNAME.lower()
+        return stored == teacher_username
 
     # ── user CRUD ────────────────────────────
 
@@ -92,7 +102,7 @@ class UserDataManager:
 
     # ── parent chat-id mapping ───────────────
 
-    def register_parent(self, username: str, chat_id: int) -> None:
+    def register_parent(self, username: str, chat_id: int, teacher_username: str | None = None) -> None:
         """Map a parent's @username to their chat_id."""
         if self._api_enabled():
             self._api_request(
@@ -101,16 +111,19 @@ class UserDataManager:
                 payload={"username": username, "chat_id": chat_id},
             )
             return
-        self._parent_chat_ids[username.lower()] = chat_id
+        teacher_key = self._normalize_teacher_username(teacher_username)
+        self._parent_chat_ids.setdefault(teacher_key, {})
+        self._parent_chat_ids[teacher_key][username.lower()] = chat_id
         self._save_parent_chat_ids()
 
-    def get_parent_chat_id(self, username: str) -> int | None:
+    def get_parent_chat_id(self, username: str, teacher_username: str | None = None) -> int | None:
         if self._api_enabled():
             data = self._api_request("GET", f"/api/parents/{quote(username)}")
             if isinstance(data, dict):
                 return data.get("chat_id")
             return None
-        return self._parent_chat_ids.get(username.lower())
+        teacher_key = self._normalize_teacher_username(teacher_username)
+        return (self._parent_chat_ids.get(teacher_key) or {}).get(username.lower())
 
     def _save_parent_chat_ids(self) -> None:
         """Persist parent @username → chat_id mapping to disk."""
@@ -130,43 +143,64 @@ class UserDataManager:
             with open(PARENTS_FILE) as fp:
                 data = json.load(fp)
             if isinstance(data, dict):
-                # Normalize keys and ensure chat IDs are integers.
-                self._parent_chat_ids = {
-                    str(username).lower(): int(chat_id)
-                    for username, chat_id in data.items()
-                }
+                if all(isinstance(value, dict) for value in data.values()):
+                    self._parent_chat_ids = {
+                        str(teacher).lower(): {
+                            str(username).lower(): int(chat_id)
+                            for username, chat_id in value.items()
+                        }
+                        for teacher, value in data.items()
+                    }
+                else:
+                    self._parent_chat_ids = {
+                        TEACHER_USERNAME.lower(): {
+                            str(username).lower(): int(chat_id)
+                            for username, chat_id in data.items()
+                        }
+                    }
         except (json.JSONDecodeError, ValueError, TypeError):
             self._parent_chat_ids = {}
 
-    def save_attempt(self, attempt: dict) -> None:
+    def save_attempt(self, attempt: dict, teacher_username: str | None = None) -> None:
         """Append a completed test attempt to persistent storage."""
+        owner = self._normalize_teacher_username(teacher_username)
+        attempt["teacher_username"] = owner
         if self._api_enabled():
             self._api_request("POST", "/api/attempts", payload=attempt)
             return
-        attempts = self.load_attempts()
+        attempts = []
+        if os.path.exists(ATTEMPTS_FILE):
+            try:
+                with open(ATTEMPTS_FILE) as fp:
+                    data = json.load(fp)
+                attempts = data if isinstance(data, list) else []
+            except json.JSONDecodeError:
+                attempts = []
         attempts.append(attempt)
         with open(ATTEMPTS_FILE, "w") as fp:
             json.dump(attempts, fp, indent=2)
 
-    def load_attempts(self) -> list[dict]:
+    def load_attempts(self, teacher_username: str | None = None) -> list[dict]:
         """Load historical attempts for teacher dashboard."""
+        owner = self._normalize_teacher_username(teacher_username)
         if self._api_enabled():
             data = self._api_request("GET", "/api/attempts")
-            return data if isinstance(data, list) else []
+            attempts = data if isinstance(data, list) else []
+            return [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
                     data = json.load(fp)
                 if isinstance(data, list):
-                    return data
+                    return [a for a in data if self._attempt_belongs_to_teacher(a, owner)]
             except json.JSONDecodeError:
                 return []
         return []
 
-    def has_attempt_for_roll(self, test_id: str, roll: str) -> bool:
+    def has_attempt_for_roll(self, test_id: str, roll: str, teacher_username: str | None = None) -> bool:
         """Return True if the given roll has already submitted this test."""
         normalized_roll = str(roll).strip()
-        for attempt in self.load_attempts():
+        for attempt in self.load_attempts(teacher_username):
             if str(attempt.get("test_id", "")) != str(test_id):
                 continue
             student_roll = str((attempt.get("student") or {}).get("roll", "")).strip()
@@ -174,19 +208,31 @@ class UserDataManager:
                 return True
         return False
 
-    def delete_attempt_by_id(self, attempt_id: str) -> tuple[bool, dict | None]:
+    def delete_attempt_by_id(self, attempt_id: str, teacher_username: str | None = None) -> tuple[bool, dict | None]:
         """Delete an attempt by ID and return (deleted, removed_attempt)."""
         if self._api_enabled():
             data = self._api_request("DELETE", f"/api/attempts/{attempt_id}")
             if isinstance(data, dict):
                 return bool(data.get("deleted")), data.get("removed")
             return False, None
-        attempts = self.load_attempts()
+        owner = self._normalize_teacher_username(teacher_username)
+        attempts = []
+        if os.path.exists(ATTEMPTS_FILE):
+            try:
+                with open(ATTEMPTS_FILE) as fp:
+                    data = json.load(fp)
+                attempts = data if isinstance(data, list) else []
+            except json.JSONDecodeError:
+                attempts = []
         kept = []
         removed = None
 
         for attempt in attempts:
-            if str(attempt.get("attempt_id", "")) == str(attempt_id) and removed is None:
+            if (
+                str(attempt.get("attempt_id", "")) == str(attempt_id)
+                and self._attempt_belongs_to_teacher(attempt, owner)
+                and removed is None
+            ):
                 removed = attempt
                 continue
             kept.append(attempt)
@@ -198,19 +244,30 @@ class UserDataManager:
             json.dump(kept, fp, indent=2)
         return True, removed
 
-    def delete_attempts_by_test_id(self, test_id: str) -> int:
+    def delete_attempts_by_test_id(self, test_id: str, teacher_username: str | None = None) -> int:
         """Delete all attempts for a test ID. Returns number removed."""
         if self._api_enabled():
             data = self._api_request("DELETE", f"/api/attempts/by-test/{test_id}")
             if isinstance(data, dict):
                 return int(data.get("removed_count", 0) or 0)
             return 0
-        attempts = self.load_attempts()
+        owner = self._normalize_teacher_username(teacher_username)
+        attempts = []
+        if os.path.exists(ATTEMPTS_FILE):
+            try:
+                with open(ATTEMPTS_FILE) as fp:
+                    data = json.load(fp)
+                attempts = data if isinstance(data, list) else []
+            except json.JSONDecodeError:
+                attempts = []
         kept = []
         removed_count = 0
 
         for attempt in attempts:
-            if str(attempt.get("test_id", "")) == str(test_id):
+            if (
+                str(attempt.get("test_id", "")) == str(test_id)
+                and self._attempt_belongs_to_teacher(attempt, owner)
+            ):
                 removed_count += 1
                 continue
             kept.append(attempt)
@@ -220,10 +277,10 @@ class UserDataManager:
                 json.dump(kept, fp, indent=2)
         return removed_count
 
-    def roll_exists_in_attempts(self, roll: str) -> bool:
+    def roll_exists_in_attempts(self, roll: str, teacher_username: str | None = None) -> bool:
         """Return True if the roll has appeared in any historical attempt."""
         normalized_roll = str(roll).strip()
-        for attempt in self.load_attempts():
+        for attempt in self.load_attempts(teacher_username):
             student_roll = str((attempt.get("student") or {}).get("roll", "")).strip()
             if student_roll == normalized_roll:
                 return True

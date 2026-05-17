@@ -3,13 +3,15 @@
 
 from functools import wraps
 import io
+import json
 import os
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from openpyxl import Workbook
 
-from config import TEACHER_USERNAME, TEACHER_PASSWORD
+from config import TEACHER_USERNAME, TEACHER_PASSWORD, TEACHERS_FILE
 from quiz import (
     load_tests,
     save_tests,
@@ -30,6 +32,57 @@ app.secret_key = os.environ.get("DASHBOARD_SECRET", "cegquiz_dashboard_secret")
 API_KEY = os.environ.get("API_KEY", "")
 
 user_manager = UserDataManager()
+
+
+def _load_teachers() -> list[dict]:
+    if os.path.exists(TEACHERS_FILE):
+        try:
+            with open(TEACHERS_FILE) as fp:
+                data = json.load(fp)
+            return data if isinstance(data, list) else []
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def _save_teachers(teachers: list[dict]) -> None:
+    with open(TEACHERS_FILE, "w") as fp:
+        json.dump(teachers, fp, indent=2)
+
+
+def _find_teacher(username: str, teachers: list[dict]) -> dict | None:
+    lookup = username.strip().lower()
+    for teacher in teachers:
+        if str(teacher.get("username", "")).lower() == lookup:
+            return teacher
+    return None
+
+
+def _authenticate_teacher(username: str, password: str) -> bool:
+    teachers = _load_teachers()
+    if teachers:
+        teacher = _find_teacher(username, teachers)
+        return bool(teacher and check_password_hash(teacher.get("password_hash", ""), password))
+    return username == TEACHER_USERNAME and password == TEACHER_PASSWORD
+
+
+def _register_teacher(username: str, password: str) -> tuple[bool, str]:
+    teachers = _load_teachers()
+    if _find_teacher(username, teachers):
+        return False, "Username already registered."
+
+    teachers.append(
+        {
+            "username": username.strip(),
+            "password_hash": generate_password_hash(password),
+        }
+    )
+    _save_teachers(teachers)
+    return True, "Registration successful. Please log in."
+
+
+def _current_teacher_username() -> str:
+    return str(session.get("teacher_username") or TEACHER_USERNAME).strip()
 
 
 def login_required(view_func):
@@ -56,7 +109,7 @@ def _api_key_required(view_func):
 
 
 def _attempts_for_test(test_id: str):
-    attempts = user_manager.load_attempts()
+    attempts = user_manager.load_attempts(_current_teacher_username())
     return [a for a in attempts if a.get("test_id") == test_id]
 
 
@@ -81,12 +134,12 @@ def _excel_response(workbook: Workbook, filename: str):
 @_api_key_required
 def api_tests():
     if request.method == "GET":
-        return jsonify(load_tests())
+        return jsonify(load_tests(TEACHER_USERNAME))
 
     data = request.get_json(silent=True)
     if not isinstance(data, list):
         return jsonify({"error": "Expected list of tests"}), 400
-    save_tests(data)
+    save_tests(data, TEACHER_USERNAME)
     return jsonify({"ok": True})
 
 
@@ -94,33 +147,33 @@ def api_tests():
 @_api_key_required
 def api_attempts():
     if request.method == "GET":
-        return jsonify(user_manager.load_attempts())
+        return jsonify(user_manager.load_attempts(TEACHER_USERNAME))
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Expected attempt object"}), 400
-    user_manager.save_attempt(data)
+    user_manager.save_attempt(data, TEACHER_USERNAME)
     return jsonify({"ok": True})
 
 
 @app.route("/api/attempts/<attempt_id>", methods=["DELETE"])
 @_api_key_required
 def api_attempts_delete(attempt_id: str):
-    deleted, removed = user_manager.delete_attempt_by_id(attempt_id)
+    deleted, removed = user_manager.delete_attempt_by_id(attempt_id, TEACHER_USERNAME)
     return jsonify({"deleted": deleted, "removed": removed})
 
 
 @app.route("/api/attempts/by-test/<test_id>", methods=["DELETE"])
 @_api_key_required
 def api_attempts_delete_by_test(test_id: str):
-    removed_count = user_manager.delete_attempts_by_test_id(test_id)
+    removed_count = user_manager.delete_attempts_by_test_id(test_id, TEACHER_USERNAME)
     return jsonify({"removed_count": removed_count})
 
 
 @app.route("/api/parents/<username>", methods=["GET"])
 @_api_key_required
 def api_parent_get(username: str):
-    chat_id = user_manager.get_parent_chat_id(username)
+    chat_id = user_manager.get_parent_chat_id(username, TEACHER_USERNAME)
     return jsonify({"chat_id": chat_id})
 
 
@@ -134,7 +187,7 @@ def api_parent_set():
     chat_id = data.get("chat_id")
     if not username or chat_id is None:
         return jsonify({"error": "username and chat_id required"}), 400
-    user_manager.register_parent(username, int(chat_id))
+    user_manager.register_parent(username, int(chat_id), TEACHER_USERNAME)
     return jsonify({"ok": True})
 
 
@@ -151,13 +204,46 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        if username == TEACHER_USERNAME and password == TEACHER_PASSWORD:
+        if _authenticate_teacher(username, password):
             session["teacher_logged_in"] = True
+            session["teacher_username"] = username
             return redirect(url_for("dashboard"))
 
         flash("Invalid username or password.", "error")
 
     return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if session.get("teacher_logged_in"):
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if len(username) < 3:
+            flash("Username must be at least 3 characters.", "error")
+            return render_template("register.html")
+
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+            return render_template("register.html")
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
+
+        ok, message = _register_teacher(username, password)
+        if ok:
+            flash(message, "success")
+            return redirect(url_for("login"))
+
+        flash(message, "error")
+
+    return render_template("register.html")
 
 
 @app.route("/logout")
@@ -170,8 +256,9 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    tests = load_tests()
-    attempts = user_manager.load_attempts()
+    teacher_username = _current_teacher_username()
+    tests = load_tests(teacher_username)
+    attempts = user_manager.load_attempts(teacher_username)
 
     attendance_by_test = {}
     for attempt in attempts:
@@ -189,7 +276,7 @@ def dashboard():
 @app.route("/test/<test_id>")
 @login_required
 def test_details(test_id: str):
-    tests = load_tests()
+    tests = load_tests(_current_teacher_username())
     test = next((t for t in tests if t.get("id") == test_id), None)
     if test is None:
         flash("Test not found.", "error")
@@ -252,7 +339,7 @@ def test_details(test_id: str):
 @app.route("/download-test-report/<test_id>")
 @login_required
 def download_test_report(test_id: str):
-    test = get_test_by_id(test_id)
+    test = get_test_by_id(test_id, _current_teacher_username())
     if test is None:
         flash("Test not found.", "error")
         return redirect(url_for("dashboard"))
@@ -291,7 +378,7 @@ def download_test_report(test_id: str):
 @app.route("/attempt/<attempt_id>")
 @login_required
 def attempt_details(attempt_id: str):
-    attempts = user_manager.load_attempts()
+    attempts = user_manager.load_attempts(_current_teacher_username())
     attempt = next((a for a in attempts if a.get("attempt_id") == attempt_id), None)
     if attempt is None:
         flash("Student attempt not found.", "error")
@@ -311,7 +398,7 @@ def attempt_details(attempt_id: str):
 @app.route("/download-attempt-report/<attempt_id>")
 @login_required
 def download_attempt_report(attempt_id: str):
-    attempts = user_manager.load_attempts()
+    attempts = user_manager.load_attempts(_current_teacher_username())
     attempt = next((a for a in attempts if a.get("attempt_id") == attempt_id), None)
     if attempt is None:
         flash("Student attempt not found.", "error")
@@ -348,7 +435,7 @@ def download_attempt_report(attempt_id: str):
 @app.route("/delete-attempt/<attempt_id>", methods=["POST"])
 @login_required
 def delete_attempt(attempt_id: str):
-    deleted, removed = user_manager.delete_attempt_by_id(attempt_id)
+    deleted, removed = user_manager.delete_attempt_by_id(attempt_id, _current_teacher_username())
     if not deleted:
         flash("Attempt not found.", "error")
         return redirect(url_for("dashboard"))
@@ -384,6 +471,7 @@ def create_test():
             mark_incorrect = int(request.form.get("mark_incorrect", "0") or "0")
             content = test_file.read().decode("utf-8")
             questions = parse_test_file(content)
+            teacher_username = _current_teacher_username()
             test = build_test(
                 name=test_name,
                 questions=questions,
@@ -393,8 +481,9 @@ def create_test():
                 mark_correct=mark_correct,
                 mark_incorrect=mark_incorrect,
                 is_active=make_active,
+                teacher_username=teacher_username,
             )
-            add_test(test, make_active=make_active)
+            add_test(test, make_active=make_active, teacher_username=teacher_username)
             flash("Test created successfully.", "success")
             return redirect(url_for("dashboard"))
         except Exception as exc:
@@ -406,7 +495,7 @@ def create_test():
 @app.route("/set-active/<test_id>", methods=["POST"])
 @login_required
 def set_active(test_id: str):
-    if set_active_test(test_id):
+    if set_active_test(test_id, _current_teacher_username()):
         flash("Test marked active.", "success")
     else:
         flash("Test not found.", "error")
@@ -416,7 +505,7 @@ def set_active(test_id: str):
 @app.route("/set-inactive/<test_id>", methods=["POST"])
 @login_required
 def set_inactive(test_id: str):
-    if set_test_inactive(test_id):
+    if set_test_inactive(test_id, _current_teacher_username()):
         flash("Test marked inactive.", "success")
     else:
         flash("Test not found.", "error")
@@ -426,7 +515,7 @@ def set_inactive(test_id: str):
 @app.route("/set-all-inactive", methods=["POST"])
 @login_required
 def set_all_inactive():
-    if set_all_tests_inactive():
+    if set_all_tests_inactive(_current_teacher_username()):
         flash("All tests are now inactive.", "success")
     else:
         flash("No tests found.", "error")
@@ -436,7 +525,8 @@ def set_all_inactive():
 @app.route("/edit-test/<test_id>", methods=["GET", "POST"])
 @login_required
 def edit_test(test_id: str):
-    test = get_test_by_id(test_id)
+    teacher_username = _current_teacher_username()
+    test = get_test_by_id(test_id, teacher_username)
     if test is None:
         flash("Test not found.", "error")
         return redirect(url_for("dashboard"))
@@ -472,12 +562,13 @@ def edit_test(test_id: str):
                 mark_correct=mark_correct,
                 mark_incorrect=mark_incorrect,
                 make_active=make_active,
+                teacher_username=teacher_username,
             )
             if not updated:
                 flash("Failed to update test.", "error")
                 return redirect(url_for("dashboard"))
 
-            removed_count = user_manager.delete_attempts_by_test_id(test_id)
+            removed_count = user_manager.delete_attempts_by_test_id(test_id, teacher_username)
             if removed_count:
                 flash(
                     f"Test updated. Cleared {removed_count} previous attempts for this test.",
@@ -495,7 +586,7 @@ def edit_test(test_id: str):
 @app.route("/delete-test/<test_id>", methods=["POST"])
 @login_required
 def remove_test(test_id: str):
-    if delete_test(test_id):
+    if delete_test(test_id, _current_teacher_username()):
         flash("Test deleted. Ongoing student sessions for this test will be reset.", "success")
     else:
         flash("Test not found.", "error")

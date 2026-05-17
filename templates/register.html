@@ -1,6 +1,6 @@
 {% extends 'base.html' %} {% block content %}
 <section class="card narrow">
-  <h2>Teacher Login</h2>
+  <h2>Teacher Registration</h2>
   <form method="post" class="form-grid">
     <label>Username</label>
     <input type="text" name="username" required />
@@ -8,11 +8,14 @@
     <label>Password</label>
     <input type="password" name="password" required />
 
-    <button type="submit">Login</button>
+    <label>Confirm Password</label>
+    <input type="password" name="confirm_password" required />
+
+    <button type="submit">Register</button>
   </form>
   <p style="margin-top: 12px">
-    New teacher?
-    <a href="{{ url_for('register') }}">Register here</a>
+    Already have an account?
+    <a href="{{ url_for('login') }}">Log in</a>
   </p>
 </section>
 {% endblock %}

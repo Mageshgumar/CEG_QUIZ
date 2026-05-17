@@ -48,7 +48,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from config import BOT_TOKEN, NAME, PHONE, ROLL, PARENT, QUIZ, TEST_SELECT
 from user_data import UserDataManager, validate_phone, validate_roll, validate_parent_username
-from quiz import get_active_tests, get_test_by_id, get_question_message, check_answer, get_result_summary
+from quiz import (
+    get_all_active_tests,
+    get_test_by_id_any,
+    get_question_message,
+    check_answer,
+    get_result_summary,
+)
 from notifications import send_parent_notification
 
 # ──────────────────────────────────────────────
@@ -448,7 +454,7 @@ async def _validate_user_test_session(context: ContextTypes.DEFAULT_TYPE, chat_i
     if not test_id:
         return True
 
-    current_test = get_test_by_id(test_id)
+    current_test = get_test_by_id_any(test_id)
     if current_test is None:
         _cancel_timeout_job(context, chat_id)
         await safe_send(
@@ -572,13 +578,18 @@ async def roll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         await safe_reply(update.message, "⚠️ Please choose a test first. Send /start to begin.")
         return ConversationHandler.END
 
-    selected_test = get_test_by_id(pending_test_id)
+    selected_test = get_test_by_id_any(pending_test_id)
     if selected_test is None or not selected_test.get("is_active"):
         await safe_reply(update.message, "🚫 Selected test is not active anymore. Please /start again.")
         return ConversationHandler.END
 
-    if selected_test.get("one_time") and user_manager.has_attempt_for_roll(pending_test_id, roll):
-        active_tests = get_active_tests()
+    teacher_username = selected_test.get("teacher_username")
+    if selected_test.get("one_time") and user_manager.has_attempt_for_roll(
+        pending_test_id,
+        roll,
+        teacher_username=teacher_username,
+    ):
+        active_tests = get_all_active_tests()
         await safe_reply(
             update.message,
             "🚫 *One Time Test*\n"
@@ -591,6 +602,7 @@ async def roll_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     user_manager.update_field(chat_id, "roll", roll)
     _initialize_user_test_session(user, selected_test)
+    user["teacher_username"] = teacher_username or user.get("teacher_username")
     user.pop("pending_test_id", None)
 
     await safe_reply(
@@ -623,7 +635,7 @@ async def parent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     user_manager.update_field(chat_id, "parent_username", parent)
 
-    active_tests = get_active_tests()
+    active_tests = get_all_active_tests()
     if not active_tests:
         await safe_reply(update.message, "🚫 *No Active Tests*\nPlease try again later.", parse_mode="Markdown")
         return ConversationHandler.END
@@ -655,7 +667,7 @@ async def test_select_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
 
     test_id = query.data.replace("test_", "", 1)
-    selected_test = get_test_by_id(test_id)
+    selected_test = get_test_by_id_any(test_id)
     if selected_test is None or not selected_test.get("is_active"):
         await safe_edit(query, "🚫 Selected test is not active anymore. Please /start again.")
         return ConversationHandler.END
@@ -949,12 +961,14 @@ async def _process_selected_answer(update: Update,
         return await end_quiz(update, context, chat_id)
 
     if _is_submission_late(user, idx, submitted_ts=submitted_ts):
-        return await _advance_on_timeout(
-            context,
-            chat_id,
-            idx,
-            message="⏰ Answer received after timeout. Moving to the next question...",
-        )
+        message = "⏰ Time over for that question. Please answer the latest question."
+        if query is not None:
+            await safe_edit(query, message)
+        elif update.message:
+            await safe_reply(update.message, message)
+        if int(user.get("current_question", 0)) != idx:
+            return await send_question(update=None, context=context, chat_id=chat_id)
+        return QUIZ
 
     # Protect against stale answers reaching this point.
     if idx != int(user.get("current_question", 0)):
@@ -1160,7 +1174,7 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
         "total_marks": user.get("total_marks", user.get("total_questions", 0)),
         "answers": user.get("answers", []),
     }
-    user_manager.save_attempt(attempt)
+    user_manager.save_attempt(attempt, teacher_username=user.get("teacher_username"))
 
     # Notify parent
     parent_username = user.get("parent_username", "")
