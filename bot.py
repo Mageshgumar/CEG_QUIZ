@@ -961,14 +961,21 @@ async def _process_selected_answer(update: Update,
         return await end_quiz(update, context, chat_id)
 
     if _is_submission_late(user, idx, submitted_ts=submitted_ts):
+        current_index = int(user.get("current_question", 0))
+        if current_index == idx:
+            return await _advance_on_timeout(
+                context,
+                chat_id,
+                idx,
+                message="⏰ Answer received after timeout. Moving to the next question...",
+            )
+
         message = "⏰ Time over for that question. Please answer the latest question."
         if query is not None:
             await safe_edit(query, message)
         elif update.message:
             await safe_reply(update.message, message)
-        if int(user.get("current_question", 0)) != idx:
-            return await send_question(update=None, context=context, chat_id=chat_id)
-        return QUIZ
+        return await send_question(update=None, context=context, chat_id=chat_id)
 
     # Protect against stale answers reaching this point.
     if idx != int(user.get("current_question", 0)):
