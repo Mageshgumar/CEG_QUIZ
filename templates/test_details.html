@@ -42,15 +42,21 @@
   </form>
 
   {% if attempts %}
+  <div style="margin-bottom: 14px">
+    <a class="button-link" href="{{ url_for('download_test_report', test_id=test.id) }}">
+      Download Report
+    </a>
+  </div>
   <table>
     <thead>
       <tr>
         <th>Student Name</th>
-        <th>Roll</th>
-        <th>Phone</th>
+        <th>Roll no</th>
+        <th>Phone no</th>
         <th>Score</th>
         <th>Submitted At</th>
         <th>Action</th>
+        <th>Report</th>
       </tr>
     </thead>
     <tbody>
@@ -79,6 +85,14 @@
           >
             <button type="submit" class="danger-button">Delete Attempt</button>
           </form>
+        </td>
+        <td>
+          <a
+            class="button-link"
+            href="{{ url_for('download_attempt_report', attempt_id=attempt.attempt_id) }}"
+          >
+            Download Report
+          </a>
         </td>
       </tr>
       {% endfor %}

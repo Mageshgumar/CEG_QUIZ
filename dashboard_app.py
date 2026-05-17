@@ -2,9 +2,12 @@
 """Teacher dashboard for managing tests and viewing student performance."""
 
 from functools import wraps
+import io
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+
+from openpyxl import Workbook
 
 from config import TEACHER_USERNAME, TEACHER_PASSWORD
 from quiz import (
@@ -55,6 +58,23 @@ def _api_key_required(view_func):
 def _attempts_for_test(test_id: str):
     attempts = user_manager.load_attempts()
     return [a for a in attempts if a.get("test_id") == test_id]
+
+
+def _write_row(sheet, row_index: int, values: list[str | int]) -> None:
+    for col_index, value in enumerate(values, start=1):
+        sheet.cell(row=row_index, column=col_index, value=value)
+
+
+def _excel_response(workbook: Workbook, filename: str):
+    stream = io.BytesIO()
+    workbook.save(stream)
+    stream.seek(0)
+    return send_file(
+        stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/api/tests", methods=["GET", "POST"])
@@ -229,6 +249,45 @@ def test_details(test_id: str):
     )
 
 
+@app.route("/download-test-report/<test_id>")
+@login_required
+def download_test_report(test_id: str):
+    test = get_test_by_id(test_id)
+    if test is None:
+        flash("Test not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    attempts = _attempts_for_test(test_id)
+    attempts.sort(key=lambda a: str(a.get("submitted_at", "")), reverse=True)
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Test Report"
+
+    headers = ["Student Name", "Roll no", "Phone no", "Score", "Submitted At"]
+    _write_row(sheet, 1, headers)
+
+    for idx, attempt in enumerate(attempts, start=2):
+        student = attempt.get("student") or {}
+        total_marks = attempt.get("total_marks", attempt.get("total_questions", 0))
+        score = f"{attempt.get('score', 0)}/{total_marks}"
+        _write_row(
+            sheet,
+            idx,
+            [
+                student.get("name", ""),
+                student.get("roll", ""),
+                student.get("phone", ""),
+                score,
+                attempt.get("submitted_at", ""),
+            ],
+        )
+
+    safe_name = (test.get("name") or "test").strip().replace(" ", "_")
+    filename = f"{safe_name}_students_report.xlsx"
+    return _excel_response(workbook, filename)
+
+
 @app.route("/attempt/<attempt_id>")
 @login_required
 def attempt_details(attempt_id: str):
@@ -247,6 +306,43 @@ def attempt_details(attempt_id: str):
         attempt=attempt,
         percentage=percentage,
     )
+
+
+@app.route("/download-attempt-report/<attempt_id>")
+@login_required
+def download_attempt_report(attempt_id: str):
+    attempts = user_manager.load_attempts()
+    attempt = next((a for a in attempts if a.get("attempt_id") == attempt_id), None)
+    if attempt is None:
+        flash("Student attempt not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Attempt Report"
+
+    headers = ["Question no", "Question", "Student Answer", "Correct Answer", "Status"]
+    _write_row(sheet, 1, headers)
+
+    answers = attempt.get("answers") or []
+    for idx, ans in enumerate(answers, start=2):
+        status = "Correct" if ans.get("is_correct") else "Wrong"
+        _write_row(
+            sheet,
+            idx,
+            [
+                idx - 1,
+                ans.get("question", ""),
+                ans.get("user_answer", ""),
+                ans.get("correct_answer", ""),
+                status,
+            ],
+        )
+
+    student = attempt.get("student") or {}
+    safe_name = (student.get("name") or "student").strip().replace(" ", "_")
+    filename = f"{safe_name}_attempt_report.xlsx"
+    return _excel_response(workbook, filename)
 
 
 @app.route("/delete-attempt/<attempt_id>", methods=["POST"])
