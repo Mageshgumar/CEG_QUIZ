@@ -652,7 +652,8 @@ async def parent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not validate_parent_username(parent):
         await safe_reply(
             update.message,
-            "⚠️ Invalid format. The username must start with '@'. Try again:"
+            "⚠️ Invalid username. Use a valid Telegram @username\n"
+            "(5-32 chars, letters/numbers/underscore, starts with a letter). Try again:"
         )
         return PARENT
 

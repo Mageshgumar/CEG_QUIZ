@@ -28,9 +28,10 @@ def validate_roll(roll: str) -> bool:
 
 
 def validate_parent_username(username: str) -> bool:
-    """Return True if *username* starts with '@' and has ≥2 characters."""
+    """Return True if *username* looks like a valid Telegram @username."""
     username = username.strip()
-    return username.startswith("@") and len(username) >= 2
+    # Telegram usernames: 5-32 chars, letters/digits/underscore, start with a letter.
+    return bool(re.fullmatch(r"@[A-Za-z][A-Za-z0-9_]{4,31}", username))
 
 
 # ──────────────────────────────────────────────
