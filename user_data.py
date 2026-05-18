@@ -69,6 +69,10 @@ class UserDataManager:
             "score": 0,
             "total_questions": 0,
             "current_question": 0,
+            "test_id": "",
+            "test_version": 1,
+            "quiz_completed": False,
+            "leaderboard_enabled": False,
             "answers": [],        # list of {question, user_answer, correct_answer, is_correct}
         }
         return self._users[chat_id]
@@ -370,16 +374,37 @@ class UserDataManager:
 
     # ── leaderboard ──────────────────────────
 
-    def get_leaderboard(self, top_n: int = 10) -> list[dict]:
-        """Return the top *top_n* users sorted by score (desc)."""
-        entries = []
-        for cid, data in self._users.items():
-            if data.get("total_questions", 0) > 0:
-                entries.append({
-                    "name": data["name"],
-                    "roll": data["roll"],
-                    "score": data["score"],
-                    "total": data["total_questions"],
-                })
+    def get_leaderboard(self, test_id: str | None = None, test_version: int | None = None,
+                        teacher_username: str | None = None, top_n: int = 10) -> list[dict]:
+        """Return the top *top_n* scores for a specific test."""
+        if not test_id:
+            return []
+
+        attempts = self.load_attempts(teacher_username)
+        entries_by_roll: dict[str, dict] = {}
+        for attempt in attempts:
+            if str(attempt.get("test_id", "")) != str(test_id):
+                continue
+            if test_version is not None:
+                stored_version = int(attempt.get("test_version", 1) or 1)
+                if stored_version != int(test_version):
+                    continue
+            student = attempt.get("student") or {}
+            roll = str(student.get("roll", "")).strip()
+            key = roll or str(student.get("chat_id", "")) or str(attempt.get("attempt_id", ""))
+            score = int(attempt.get("score", 0) or 0)
+            total = int(attempt.get("total_questions", 0) or 0)
+            name = str(student.get("name", ""))
+
+            existing = entries_by_roll.get(key)
+            if existing is None or score > existing["score"]:
+                entries_by_roll[key] = {
+                    "name": name,
+                    "roll": roll,
+                    "score": score,
+                    "total": total,
+                }
+
+        entries = list(entries_by_roll.values())
         entries.sort(key=lambda e: e["score"], reverse=True)
         return entries[:top_n]

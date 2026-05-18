@@ -1240,7 +1240,12 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     test_id = user.get("test_id")
     test_version = user.get("test_version", 1)
-    entries = user_manager.get_leaderboard(test_id=test_id, test_version=test_version)
+    teacher_username = user.get("teacher_username")
+    entries = user_manager.get_leaderboard(
+        test_id=test_id,
+        test_version=test_version,
+        teacher_username=teacher_username,
+    )
     if not entries:
         await safe_reply(update.message, "📊 No leaderboard entries for this test yet!")
         return
