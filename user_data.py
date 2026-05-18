@@ -6,12 +6,11 @@ import json
 import os
 import re
 from urllib.parse import quote
-from datetime import datetime, timezone, timedelta
 
 import requests
 
 from config import RESULTS_FILE, PARENTS_FILE, ATTEMPTS_FILE, API_BASE_URL, API_KEY, TEACHER_USERNAME, USE_SUPABASE
-from supabase_storage import StorageBackend, IST_TZ
+from supabase_storage import StorageBackend
 
 
 # ──────────────────────────────────────────────
@@ -206,22 +205,7 @@ class UserDataManager:
             return [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
         if USE_SUPABASE:
             attempts = StorageBackend.get_attempts()
-            attempts = [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
-            # Convert UTC/timestamptz ISO strings to IST display strings
-            for a in attempts:
-                submitted = a.get("submitted_at")
-                if isinstance(submitted, str) and submitted:
-                    try:
-                        dt = datetime.fromisoformat(submitted)
-                        if dt.tzinfo is None:
-                            # assume UTC if no tz present
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        ist = dt.astimezone(IST_TZ)
-                        a["submitted_at"] = ist.strftime("%Y-%m-%d %H:%M:%S")
-                    except Exception:
-                        # leave as-is if parsing fails
-                        pass
-            return attempts
+            return [a for a in attempts if self._attempt_belongs_to_teacher(a, owner)]
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
@@ -238,20 +222,7 @@ class UserDataManager:
             data = self._api_request("GET", "/api/attempts")
             return data if isinstance(data, list) else []
         if USE_SUPABASE:
-            attempts = StorageBackend.get_attempts()
-            # convert timestamps for admin listing as well
-            for a in attempts:
-                submitted = a.get("submitted_at")
-                if isinstance(submitted, str) and submitted:
-                    try:
-                        dt = datetime.fromisoformat(submitted)
-                        if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        ist = dt.astimezone(IST_TZ)
-                        a["submitted_at"] = ist.strftime("%Y-%m-%d %H:%M:%S")
-                    except Exception:
-                        pass
-            return attempts
+            return StorageBackend.get_attempts()
         if os.path.exists(ATTEMPTS_FILE):
             try:
                 with open(ATTEMPTS_FILE) as fp:
