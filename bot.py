@@ -546,8 +546,11 @@ async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     chat_id = update.effective_chat.id
     name = update.message.text.strip()
 
-    if len(name) < 2:
-        await safe_reply(update.message, "⚠️ Name must be at least 2 characters. Try again:")
+    if len(name) < 2 or not re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,48}", name):
+        await safe_reply(
+            update.message,
+            "⚠️ Please enter a valid name (letters, spaces, . ' - only). Try again:",
+        )
         return NAME
 
     user_manager.update_field(chat_id, "name", name)
