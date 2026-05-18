@@ -442,6 +442,8 @@ def _initialize_user_test_session(user: dict, test: dict) -> None:
     user["question_set"] = selected_questions
     user["total_questions"] = len(selected_questions)
     user["current_question"] = 0
+    user["quiz_completed"] = False
+    user["leaderboard_enabled"] = False
 
 
 async def _validate_user_test_session(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> bool:
@@ -1215,6 +1217,9 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     await safe_send(context.bot, chat_id, msg, parse_mode="Markdown")
 
+    user["quiz_completed"] = True
+    user["leaderboard_enabled"] = True
+
     return ConversationHandler.END
 
 
@@ -1224,12 +1229,23 @@ async def end_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show top scores."""
-    entries = user_manager.get_leaderboard()
-    if not entries:
-        await safe_reply(update.message, "📊 No quiz results yet!")
+    chat_id = update.effective_chat.id
+    user = user_manager.get_user(chat_id)
+    if not user or not user.get("quiz_completed") or not user.get("leaderboard_enabled"):
+        await safe_reply(
+            update.message,
+            "🏁 Leaderboard will be available once you complete the test and the parent notification is sent.",
+        )
         return
 
-    lines = ["🏆 *Leaderboard*\n"]
+    test_id = user.get("test_id")
+    test_version = user.get("test_version", 1)
+    entries = user_manager.get_leaderboard(test_id=test_id, test_version=test_version)
+    if not entries:
+        await safe_reply(update.message, "📊 No leaderboard entries for this test yet!")
+        return
+
+    lines = ["🏆 *Leaderboard (This Test)*\n"]
     medals = ["🥇", "🥈", "🥉"]
     for i, e in enumerate(entries):
         prefix = medals[i] if i < 3 else f"  {i + 1}."
